@@ -6,18 +6,17 @@ COPY package*.json ./
 RUN npm install
 
 COPY . .
+
+ARG VITE_API_URL=http://localhost:8000/api/v1
+ENV VITE_API_URL=${VITE_API_URL}
+
 RUN npm run build
 
-FROM node:20-alpine AS runner
-WORKDIR /app
+FROM nginx:alpine AS runner
 
-ENV NODE_ENV=production
-
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/node_modules ./node_modules
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/dist /usr/share/nginx/html
 
 EXPOSE 3000
 
-CMD ["npm", "start"]
+CMD ["nginx", "-g", "daemon off;"]
