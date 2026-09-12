@@ -14,8 +14,12 @@ import {
   LogOut,
   UserCheck,
   LogIn,
+  Globe,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/features/auth/AuthContext";
+import { ToastProvider, NavigationItem, StatusIndicator, IconButton } from "@/components/ui";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -24,176 +28,236 @@ interface MainLayoutProps {
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { user, logout } = useAuth();
 
   const navItems = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "Analyze", href: "/analyze", icon: Search },
     { label: "History", href: "/history", icon: History },
+    { label: "Threat Intelligence", href: "/threat-intel", icon: Globe },
     { label: "Reports", href: "/reports", icon: FileText },
     { label: "Settings", href: "/settings", icon: Settings },
   ];
 
   return (
-    <div className="min-h-screen bg-[#0a0b0e] text-slate-100 flex flex-col font-sans selection:bg-red-500 selection:text-white">
-      {/* Top Cyber Navigation Bar */}
-      <header className="sticky top-0 z-50 border-b border-[#1e222d] bg-[#0d0f14]/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          {/* Logo & Platform Name */}
-          <div className="flex items-center gap-3">
-            <Link to="/dashboard" className="flex items-center gap-2.5 group">
-              <div className="relative w-9 h-9 rounded-lg bg-gradient-to-br from-red-600 to-red-950 p-0.5 shadow-[0_0_20px_rgba(239,68,68,0.4)] transition-transform group-hover:scale-105">
-                <div className="w-full h-full bg-[#0a0b0e] rounded-[7px] flex items-center justify-center border border-red-500/40">
-                  <ShieldAlert className="w-5 h-5 text-red-500" />
-                </div>
-              </div>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-lg tracking-wider text-white">
-                    XE<span className="text-red-500">R</span>OX
-                  </span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 font-mono font-semibold border border-red-500/20">
-                    CORE 1.0
-                  </span>
-                </div>
-                <span className="text-[10px] tracking-wider text-slate-400 font-mono -mt-1 hidden sm:inline">
-                  AI DEFENSIVE INTELLIGENCE
-                </span>
-              </div>
-            </Link>
-          </div>
-
-          {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive =
-                location.pathname === item.href ||
-                (item.href === "/dashboard" && location.pathname === "/");
-              return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-mono tracking-wide transition-all ${
-                    isActive
-                      ? "bg-red-500/10 text-red-400 border border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.15)]"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-[#151821] border border-transparent"
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-
-          {/* System Telemetry Beacon & Auth Status */}
-          <div className="flex items-center gap-3">
-            {user ? (
-              <div className="hidden sm:flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-[#12141a] border border-[#262b37] text-xs font-mono">
-                <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-slate-300 max-w-[140px] truncate">{user.email}</span>
-                <button
-                  onClick={() => logout()}
-                  title="Logout"
-                  className="ml-1 text-slate-400 hover:text-red-400 transition-colors"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ) : (
-              <Link
-                to="/login"
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#151821] hover:bg-[#1c202c] text-xs font-mono text-slate-300 border border-[#282e3d] transition-colors"
+    <ToastProvider>
+      <div className="min-h-screen bg-xerox-bg text-slate-100 flex flex-col font-sans selection:bg-xerox-red selection:text-white">
+        {/* Top Cyber Command Header */}
+        <header className="sticky top-0 z-40 border-b border-xerox-border bg-xerox-bg-secondary/90 backdrop-blur-xl">
+          <div className="px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            {/* Left: Mobile Toggle & Brand Logo */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                aria-label="Toggle navigation menu"
+                className="lg:hidden p-2 rounded-xl bg-xerox-surface border border-xerox-border text-slate-400 hover:text-white"
               >
-                <LogIn className="w-3.5 h-3.5 text-red-400" />
-                <span>AUTHENTICATE</span>
+                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
+
+              <Link to="/dashboard" className="flex items-center gap-2.5 group">
+                <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-red-600 to-red-950 p-0.5 shadow-[0_0_20px_rgba(239,68,68,0.35)] transition-transform group-hover:scale-105">
+                  <div className="w-full h-full bg-xerox-bg rounded-[10px] flex items-center justify-center border border-red-500/40">
+                    <ShieldAlert className="w-5 h-5 text-xerox-red" />
+                  </div>
+                </div>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-extrabold text-lg tracking-wider text-white">
+                      XE<span className="text-xerox-red">R</span>OX
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 font-mono font-bold border border-red-500/20">
+                      SENTINEL 1.0
+                    </span>
+                  </div>
+                  <span className="text-[10px] tracking-wider text-slate-400 font-mono -mt-1 hidden sm:inline">
+                    CYBER DEFENSIVE INTELLIGENCE
+                  </span>
+                </div>
               </Link>
-            )}
+            </div>
 
-            <Link
-              to="/analyze"
-              className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-mono font-semibold tracking-wider transition-all shadow-[0_0_20px_rgba(239,68,68,0.35)]"
-            >
-              <Radio className="w-3.5 h-3.5 animate-pulse" />
-              INSPECT TARGET
-            </Link>
+            {/* Middle: System Operational Status Beacon */}
+            <div className="hidden md:flex items-center gap-4 px-4 py-1.5 rounded-full bg-xerox-surface/80 border border-xerox-border-subtle">
+              <StatusIndicator status="online" label="DEFENSIVE SHIELD OPERATIONAL" size="sm" />
+              <span className="text-slate-600 font-mono text-xs">|</span>
+              <span className="text-[11px] font-mono text-slate-400">PHASE 1 // HEURISTIC CORE</span>
+            </div>
 
-            {/* Mobile menu toggle */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg bg-[#151821] border border-[#262b37] text-slate-400 hover:text-white"
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-          </div>
-        </div>
+            {/* Right: Quick Action & User Profile */}
+            <div className="flex items-center gap-3">
+              <Link
+                to="/analyze"
+                className="hidden sm:inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-xerox-red hover:bg-xerox-red-bright text-white text-xs font-mono font-bold tracking-wider transition-all shadow-red-glow"
+              >
+                <Radio className="w-3.5 h-3.5 animate-pulse" />
+                INSPECT TARGET
+              </Link>
 
-        {/* Mobile menu drawer */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-[#1e222d] bg-[#0d0f14] px-4 py-3 space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-mono ${
-                    isActive
-                      ? "bg-red-500/15 text-red-400 border border-red-500/30"
-                      : "text-slate-300 hover:bg-[#151821]"
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
-
-            <div className="pt-2 border-t border-[#1e222d]">
               {user ? (
-                <div className="flex items-center justify-between px-3 py-2 text-xs font-mono text-slate-300">
-                  <span className="truncate">{user.email}</span>
+                <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-xerox-surface border border-xerox-border text-xs font-mono">
+                  <UserCheck className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                  <span className="text-slate-300 max-w-[120px] sm:max-w-[160px] truncate">
+                    {user.email}
+                  </span>
                   <button
                     onClick={() => logout()}
-                    className="flex items-center gap-1 text-red-400 hover:underline"
+                    title="Sign out of XEROX"
+                    aria-label="Logout"
+                    className="ml-1 text-slate-400 hover:text-xerox-red transition-colors p-1 rounded hover:bg-xerox-surface-elevated"
                   >
-                    <LogOut className="w-3.5 h-3.5" /> Logout
+                    <LogOut className="w-3.5 h-3.5" />
                   </button>
                 </div>
               ) : (
                 <Link
                   to="/login"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-2 px-3 py-2 text-xs font-mono text-red-400"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-xerox-surface hover:bg-xerox-surface-elevated text-xs font-mono text-slate-300 border border-xerox-border transition-colors"
                 >
-                  <LogIn className="w-3.5 h-3.5" /> Authenticate
+                  <LogIn className="w-3.5 h-3.5 text-red-400" />
+                  <span>AUTHENTICATE</span>
                 </Link>
               )}
             </div>
           </div>
-        )}
-      </header>
+        </header>
 
-      {/* Main Content Body */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {children}
-      </main>
+        {/* Core Layout: Sidebar + Main Content */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Desktop Left Sidebar */}
+          <aside
+            className={`hidden lg:flex flex-col border-r border-xerox-border bg-xerox-bg-secondary/60 backdrop-blur-md transition-all duration-300 ${
+              sidebarCollapsed ? "w-20" : "w-64"
+            }`}
+          >
+            {/* Navigation links */}
+            <div className="flex-1 p-4 space-y-1.5">
+              {navItems.map((item) => {
+                const isActive =
+                  location.pathname === item.href ||
+                  (item.href === "/dashboard" && location.pathname === "/");
+                return (
+                  <NavigationItem
+                    key={item.href}
+                    href={item.href}
+                    icon={item.icon}
+                    label={item.label}
+                    isActive={isActive}
+                    collapsed={sidebarCollapsed}
+                  />
+                );
+              })}
+            </div>
 
-      {/* Cyber Footer */}
-      <footer className="border-t border-[#1e222d] bg-[#0d0f14] py-6 text-xs text-slate-500 font-mono">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-slate-400" />
-            <span>XEROX DEFENSIVE CYBERSECURITY ARCHITECTURE // PHASE 1</span>
-          </div>
-          <div className="text-slate-500">
-            WEAPONLESS, PURPOSE DRIVEN. A SAFER DIGITAL TOMORROW.
-          </div>
+            {/* Sidebar Collapse Toggle */}
+            <div className="p-4 border-t border-xerox-border-subtle flex items-center justify-between">
+              {!sidebarCollapsed && (
+                <div className="text-[11px] font-mono text-slate-500 truncate">
+                  XEROX ARCHITECTURE
+                </div>
+              )}
+              <IconButton
+                icon={sidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+                aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                size="sm"
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                className="text-slate-400 hover:text-white"
+              />
+            </div>
+          </aside>
+
+          {/* Mobile Navigation Drawer */}
+          {mobileMenuOpen && (
+            <div className="lg:hidden fixed inset-0 z-50 flex">
+              <div
+                className="fixed inset-0 bg-black/80 backdrop-blur-sm"
+                onClick={() => setMobileMenuOpen(false)}
+                aria-hidden="true"
+              />
+              <div className="relative w-72 max-w-full bg-xerox-bg-secondary border-r border-xerox-border p-5 flex flex-col h-full z-10 space-y-4">
+                <div className="flex items-center justify-between border-b border-xerox-border-subtle pb-4">
+                  <div className="flex items-center gap-2">
+                    <ShieldAlert className="w-5 h-5 text-xerox-red" />
+                    <span className="font-extrabold text-sm text-white font-mono">
+                      XEROX NAVIGATION
+                    </span>
+                  </div>
+                  <IconButton
+                    icon={<X className="w-4 h-4" />}
+                    aria-label="Close menu"
+                    size="sm"
+                    onClick={() => setMobileMenuOpen(false)}
+                  />
+                </div>
+
+                <nav className="flex-1 space-y-1">
+                  {navItems.map((item) => {
+                    const isActive =
+                      location.pathname === item.href ||
+                      (item.href === "/dashboard" && location.pathname === "/");
+                    return (
+                      <NavigationItem
+                        key={item.href}
+                        href={item.href}
+                        icon={item.icon}
+                        label={item.label}
+                        isActive={isActive}
+                        onClick={() => setMobileMenuOpen(false)}
+                      />
+                    );
+                  })}
+                </nav>
+
+                <div className="border-t border-xerox-border-subtle pt-4">
+                  {user ? (
+                    <div className="space-y-2">
+                      <div className="text-xs font-mono text-slate-300 truncate">
+                        {user.email}
+                      </div>
+                      <button
+                        onClick={() => {
+                          logout();
+                          setMobileMenuOpen(false);
+                        }}
+                        className="w-full flex items-center justify-center gap-2 p-2 rounded-xl bg-red-950/40 text-red-400 text-xs font-mono border border-red-500/30"
+                      >
+                        <LogOut className="w-3.5 h-3.5" /> Sign Out
+                      </button>
+                    </div>
+                  ) : (
+                    <Link
+                      to="/login"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="w-full flex items-center justify-center gap-2 p-2 rounded-xl bg-xerox-surface text-slate-200 text-xs font-mono border border-xerox-border"
+                    >
+                      <LogIn className="w-3.5 h-3.5 text-xerox-red" /> Authenticate
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Main Content Workspace Area */}
+          <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-8">
+            {children}
+          </main>
         </div>
-      </footer>
-    </div>
+
+        {/* Cyber Command Footer */}
+        <footer className="border-t border-xerox-border bg-xerox-bg-secondary py-4 text-xs text-slate-500 font-mono">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-slate-400" />
+              <span>XEROX DEFENSIVE CYBERSECURITY ARCHITECTURE // PHASE 1</span>
+            </div>
+            <div className="text-slate-500">
+              WEAPONLESS, PURPOSE DRIVEN. A SAFER DIGITAL TOMORROW.
+            </div>
+          </div>
+        </footer>
+      </div>
+    </ToastProvider>
   );
 };

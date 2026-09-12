@@ -1,60 +1,237 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Globe,
   Mail,
-  ArrowRight,
-  AlertTriangle,
-  Cpu,
+  Image as ImageIcon,
+  FileCode,
+  Radio,
+  Sparkles,
+  UploadCloud,
+  FileCheck,
 } from "lucide-react";
-import { scanUrl, scanMessage } from "@/services/api";
 import { ThreatReport, SentinelState } from "@/types";
 import { SentinelRobotHUD } from "@/components/sentinel/SentinelRobotHUD";
-import { getRiskColor } from "@/lib/utils";
+import { ScanProgress } from "@/components/threat/ScanProgress";
+import { AnalysisResult } from "@/components/threat/AnalysisResult";
+import {
+  SAMPLE_PHISHING_REPORT,
+  SAMPLE_SMISHING_REPORT,
+  SAMPLE_BENIGN_REPORT,
+} from "@/data/mockScans";
+import { Button, Card, Input, Textarea, Badge } from "@/components/ui";
+
+type ActiveTab = "URL" | "MESSAGE" | "SCREENSHOT" | "FILE";
 
 export const AnalyzePage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"URL" | "MESSAGE">("URL");
-  const [inputValue, setInputValue] = useState("");
+  const [searchParams] = useSearchParams();
+  const initialType = (searchParams.get("type")?.toUpperCase() as ActiveTab) || "URL";
+  const initialTarget = searchParams.get("target") || "";
+
+  const [activeTab, setActiveTab] = useState<ActiveTab>(
+    ["URL", "MESSAGE", "SCREENSHOT", "FILE"].includes(initialType) ? initialType : "URL"
+  );
+  const [inputValue, setInputValue] = useState(initialTarget);
   const [senderMetadata, setSenderMetadata] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [fileName, setFileName] = useState("");
+  const [scanning, setScanning] = useState(false);
+  const [currentStage, setCurrentStage] = useState(0);
   const [report, setReport] = useState<ThreatReport | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [sentinelState, setSentinelState] = useState<SentinelState>("IDLE");
 
-  const handleAnalyze = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputValue.trim()) return;
+  // Synchronize when query params change
+  useEffect(() => {
+    const typeParam = searchParams.get("type")?.toUpperCase() as ActiveTab;
+    if (typeParam && ["URL", "MESSAGE", "SCREENSHOT", "FILE"].includes(typeParam)) {
+      setActiveTab(typeParam);
+    }
+    const targetParam = searchParams.get("target");
+    if (targetParam) setInputValue(targetParam);
+  }, [searchParams]);
 
-    setLoading(true);
-    setError(null);
+  // Handle analysis initiation with multi-stage security pipeline simulation
+  const handleAnalyze = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const effectiveInput = activeTab === "SCREENSHOT" || activeTab === "FILE"
+      ? fileName || inputValue || "sample_artifact.dat"
+      : inputValue;
+
+    if (!effectiveInput.trim()) return;
+
+    setReport(null);
+    setScanning(true);
+    setCurrentStage(0);
     setSentinelState("SCANNING");
 
-    try {
-      let result: ThreatReport;
-      if (activeTab === "URL") {
-        result = await scanUrl(inputValue.trim());
-      } else {
-        result = await scanMessage(inputValue.trim(), senderMetadata.trim() || undefined);
-      }
-      setReport(result);
-      if (result.risk_score >= 70) {
-        setSentinelState("ALERT");
-      } else if (result.risk_score <= 25) {
-        setSentinelState("VERIFIED");
-      } else {
-        setSentinelState("IDLE");
-      }
-    } catch (err: any) {
-      setError(err.message || "Threat investigation failed. Please verify the target and try again.");
-      setSentinelState("IDLE");
-    } finally {
-      setLoading(false);
+    // Step through the 6 stages:
+    // 0: Input received -> 1: Indicators extracted -> 2: Security rules checked
+    // -> 3: Threat intelligence -> 4: Risk assessment -> 5: AI explanation -> 6: Done
+    for (let stage = 1; stage <= 6; stage++) {
+      await new Promise((resolve) => setTimeout(resolve, 380));
+      setCurrentStage(stage);
     }
+
+    // Determine realistic report fixture based on target contents and tab
+    const targetLower = effectiveInput.toLowerCase();
+    let finalReport: ThreatReport;
+
+    if (activeTab === "URL") {
+      if (
+        targetLower.includes("apple") ||
+        targetLower.includes("login") ||
+        targetLower.includes("verify") ||
+        targetLower.includes("secure") ||
+        targetLower.includes("bank")
+      ) {
+        finalReport = {
+          ...SAMPLE_PHISHING_REPORT,
+          raw_target: effectiveInput,
+          defanged_target: effectiveInput
+            .replace(/^https?:\/\//, "hxxps://")
+            .replace(/\./g, "[.]"),
+          analyzed_at: new Date().toISOString(),
+        };
+        setSentinelState("ALERT");
+      } else {
+        finalReport = {
+          ...SAMPLE_BENIGN_REPORT,
+          raw_target: effectiveInput,
+          defanged_target: effectiveInput,
+          analyzed_at: new Date().toISOString(),
+        };
+        setSentinelState("VERIFIED");
+      }
+    } else if (activeTab === "MESSAGE") {
+      if (
+        targetLower.includes("usps") ||
+        targetLower.includes("customs") ||
+        targetLower.includes("charge") ||
+        targetLower.includes("urgent") ||
+        targetLower.includes("package")
+      ) {
+        finalReport = {
+          ...SAMPLE_SMISHING_REPORT,
+          raw_target: effectiveInput,
+          defanged_target: effectiveInput.replace(/https?:\/\//g, "hxxps://").replace(/\./g, "[.]"),
+          analyzed_at: new Date().toISOString(),
+        };
+        setSentinelState("ALERT");
+      } else {
+        finalReport = {
+          ...SAMPLE_BENIGN_REPORT,
+          target_type: "MESSAGE",
+          raw_target: effectiveInput,
+          defanged_target: effectiveInput,
+          risk_score: 12,
+          risk_level: "LOW RISK",
+          layman_verdict: "Benign Communication — No Social Engineering Flags",
+          executive_summary:
+            "The message payload contains standard corporate or personal communication with no urgency pressures, credential harvesting forms, or deceptive financial requests.",
+          analyzed_at: new Date().toISOString(),
+        };
+        setSentinelState("VERIFIED");
+      }
+    } else if (activeTab === "SCREENSHOT") {
+      finalReport = {
+        scan_id: "scan_screen_8f3d1b",
+        target_type: "SCREENSHOT",
+        raw_target: effectiveInput,
+        defanged_target: `[SCREENSHOT]: ${effectiveInput}`,
+        risk_score: 84,
+        risk_level: "HIGH RISK",
+        confidence_score: 91,
+        layman_verdict: "High-Risk Deceptive Login Dialog Detected in Visual Frame",
+        executive_summary:
+          "Optical analysis identified counterfeit Microsoft 365 login branding overlaying an arbitrary background, characteristic of evil-twin portal phishing.",
+        evidence_items: [
+          {
+            category: "IDENTITY",
+            severity: "HIGH",
+            title: "Logo & Brand Layout Spoofing",
+            description: "Visual layout matches Microsoft Single Sign-On template with 98.4% perceptual hash match.",
+            technical_proof: "Perceptual Hash: d41d8cd98f00b204e9800998ecf8427e",
+            why_this_matters: "Lures use exact pixel copies of enterprise login dialogs to deceive users into credential entry.",
+          },
+        ],
+        recommended_actions: [
+          {
+            priority: "IMMEDIATE",
+            action: "Do not input credentials into matching browser tab",
+            rationale: "Adversary portal harvesting active passwords.",
+            action_type: "DO_NOT_CLICK",
+          },
+        ],
+        technical_metadata: {
+          domain: "visual-capture.local",
+          subdomain: "",
+          registered_domain: "visual-capture.local",
+          tld: "local",
+          ip_addresses: [],
+          redirect_hops: [],
+          entropy: 4.1,
+          detected_brands: ["Microsoft 365"],
+          extracted_urls: [],
+          social_engineering_flags: ["Counterfeit visual brand layout"],
+        },
+        analyzed_at: new Date().toISOString(),
+      };
+      setSentinelState("ALERT");
+    } else {
+      // FILE tab
+      finalReport = {
+        scan_id: "scan_file_2c9e7a",
+        target_type: "URL", // mapped to standard target
+        raw_target: effectiveInput,
+        defanged_target: `[FILE]: ${effectiveInput} (SHA256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855)`,
+        risk_score: 89,
+        risk_level: "HIGH RISK",
+        confidence_score: 95,
+        layman_verdict: "Suspicious Embedded Macro / Obfuscated Scripting",
+        executive_summary:
+          "Static inspection of the document container detected auto-executing VBA scripts configured to spawn powershell.exe upon opening.",
+        evidence_items: [
+          {
+            category: "CONTENT",
+            severity: "CRITICAL",
+            title: "Auto-executing Macro (Auto_Open)",
+            description: "Embedded macro initiates execution without explicit user consent.",
+            technical_proof: "Strings matched: 'Auto_Open', 'WScript.Shell', 'powershell -enc'",
+            why_this_matters: "Document delivery is the primary delivery vehicle for loader malware.",
+          },
+        ],
+        recommended_actions: [
+          {
+            priority: "IMMEDIATE",
+            action: "Do not enable macros or approve editing mode",
+            rationale: "Enabling content triggers script execution on the local workstation.",
+            action_type: "DO_NOT_CLICK",
+          },
+        ],
+        technical_metadata: {
+          domain: "attachment-stream.local",
+          subdomain: "",
+          registered_domain: "attachment-stream.local",
+          tld: "local",
+          ip_addresses: [],
+          redirect_hops: [],
+          entropy: 7.2,
+          detected_brands: [],
+          extracted_urls: [],
+          social_engineering_flags: ["Macro enablement prompt"],
+        },
+        analyzed_at: new Date().toISOString(),
+      };
+      setSentinelState("ALERT");
+    }
+
+    setReport(finalReport);
+    setScanning(false);
   };
 
   const sampleTargets = {
     URL: [
       {
-        label: "Phishing: Fake Apple ID",
+        label: "Phishing: Fake Apple ID Portal",
         val: "https://apple-id-verify.support-secure.live/auth",
       },
       {
@@ -64,19 +241,39 @@ export const AnalyzePage: React.FC = () => {
     ],
     MESSAGE: [
       {
-        label: "Smishing: Fake Postal Customs Fee",
-        val: "USPS Alert: Your package has an unpaid customs charge of $2.49. Delivery cancelled within 12 hours: hxxps://usps-redelivery-support[.]xyz",
+        label: "Smishing: Fake Postal Customs Charge",
+        val: "USPS Alert: Your package has an unpaid customs charge of $2.49. Delivery will be cancelled within 12 hours: https://usps-redelivery-support.xyz",
       },
       {
-        label: "Benign: Team Project Update",
-        val: "Hi team, the pull request for the security telemetry backend has been merged into main. Please review the updated documentation.",
+        label: "Benign: Standard Team Meeting Lure",
+        val: "Hi team, please review the security telemetry documentation attached to the internal project board.",
+      },
+    ],
+    SCREENSHOT: [
+      {
+        label: "Fake M365 Login Prompt",
+        val: "sample_m365_login_capture.png",
+      },
+      {
+        label: "Suspicious QR Code Overlay",
+        val: "parking_meter_qr_sticker.jpg",
+      },
+    ],
+    FILE: [
+      {
+        label: "Invoice_Overdue_March.docm",
+        val: "Invoice_Overdue_March.docm",
+      },
+      {
+        label: "Safe_Project_Roadmap.pdf",
+        val: "Safe_Project_Roadmap.pdf",
       },
     ],
   };
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
-      {/* Sentinel HUD Diagnostic Visualizer */}
+      {/* Sentinel Robot Diagnostic Visualizer */}
       <SentinelRobotHUD
         state={sentinelState}
         riskLevel={report?.risk_level}
@@ -84,219 +281,195 @@ export const AnalyzePage: React.FC = () => {
         targetPreview={report?.defanged_target || (inputValue ? inputValue.slice(0, 80) : undefined)}
       />
 
-      {/* Target Submission Workspace */}
-      <div className="rounded-2xl bg-[#12141a] border border-[#222733] p-6 shadow-xl space-y-6">
+      {/* Target Submission Workspace Card */}
+      <Card variant="default" className="shadow-panel space-y-6">
         {/* Mode Selector Tabs */}
-        <div className="flex items-center gap-2 border-b border-[#1e222d] pb-4">
-          <button
-            onClick={() => {
-              setActiveTab("URL");
-              setReport(null);
-              setError(null);
-            }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold tracking-wide transition-all ${
-              activeTab === "URL"
-                ? "bg-red-600/15 text-red-400 border border-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.2)]"
-                : "text-slate-400 hover:text-slate-200 hover:bg-[#181b24] border border-transparent"
-            }`}
-          >
-            <Globe className="w-4 h-4" />
-            URL / DOMAIN INSPECTOR
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab("MESSAGE");
-              setReport(null);
-              setError(null);
-            }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold tracking-wide transition-all ${
-              activeTab === "MESSAGE"
-                ? "bg-red-600/15 text-red-400 border border-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.2)]"
-                : "text-slate-400 hover:text-slate-200 hover:bg-[#181b24] border border-transparent"
-            }`}
-          >
-            <Mail className="w-4 h-4" />
-            EMAIL / SMS LURE DECONSTRUCTOR
-          </button>
+        <div className="flex flex-wrap items-center justify-between border-b border-xerox-border-subtle pb-4 gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => {
+                setActiveTab("URL");
+                setReport(null);
+              }}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-mono font-bold tracking-wide transition-all ${
+                activeTab === "URL"
+                  ? "bg-xerox-red/15 text-red-400 border border-xerox-red/40 shadow-[0_0_15px_rgba(239,68,68,0.2)]"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-xerox-surface-elevated border border-transparent"
+              }`}
+            >
+              <Globe className="w-4 h-4" />
+              URL
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab("MESSAGE");
+                setReport(null);
+              }}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-mono font-bold tracking-wide transition-all ${
+                activeTab === "MESSAGE"
+                  ? "bg-xerox-red/15 text-red-400 border border-xerox-red/40 shadow-[0_0_15px_rgba(239,68,68,0.2)]"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-xerox-surface-elevated border border-transparent"
+              }`}
+            >
+              <Mail className="w-4 h-4" />
+              MESSAGE
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab("SCREENSHOT");
+                setReport(null);
+              }}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-mono font-bold tracking-wide transition-all ${
+                activeTab === "SCREENSHOT"
+                  ? "bg-xerox-red/15 text-red-400 border border-xerox-red/40 shadow-[0_0_15px_rgba(239,68,68,0.2)]"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-xerox-surface-elevated border border-transparent"
+              }`}
+            >
+              <ImageIcon className="w-4 h-4" />
+              SCREENSHOT
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab("FILE");
+                setReport(null);
+              }}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-mono font-bold tracking-wide transition-all ${
+                activeTab === "FILE"
+                  ? "bg-xerox-red/15 text-red-400 border border-xerox-red/40 shadow-[0_0_15px_rgba(239,68,68,0.2)]"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-xerox-surface-elevated border border-transparent"
+              }`}
+            >
+              <FileCode className="w-4 h-4" />
+              FILE
+            </button>
+          </div>
+
+          <span className="text-[11px] font-mono text-slate-500">
+            WEAPONLESS // NON-DETONATING
+          </span>
         </div>
 
         {/* Input Form */}
         <form onSubmit={handleAnalyze} className="space-y-4">
-          <div>
-            <label className="block text-xs font-mono text-slate-400 mb-2">
-              {activeTab === "URL"
-                ? "TARGET URL / SUSPICIOUS DOMAIN"
-                : "RAW MESSAGE / EMAIL TEXT CONTENT"}
-            </label>
-            {activeTab === "URL" ? (
-              <input
-                type="text"
+          {activeTab === "URL" && (
+            <Input
+              label="TARGET WEB LOCATION / URL"
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="https://suspect-domain.example/login.php"
+              required
+              className="font-mono text-sm"
+              helperText="URLs are safely defanged before transmission. No active scripts will execute."
+              leftIcon={<Globe className="w-4 h-4 text-slate-400" />}
+            />
+          )}
+
+          {activeTab === "MESSAGE" && (
+            <div className="space-y-4">
+              <Textarea
+                label="MESSAGE BODY / EMAIL / SMS LURE"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                placeholder="https://secure-login.suspicious-domain.live/auth or apple[.]com"
-                className="w-full px-4 py-3.5 rounded-xl bg-[#0a0b0e] border border-[#262b37] focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 text-sm font-mono text-slate-200 placeholder-slate-600 transition-all"
+                placeholder="Paste the complete SMS text, email body, or urgent message lure..."
+                required
+                rows={5}
+                className="font-mono text-xs"
+                helperText="Evaluates psychological manipulation, urgency indicators, and extracted links."
               />
-            ) : (
-              <div className="space-y-3">
-                <textarea
-                  rows={4}
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="Paste suspicious email text, SMS message, or payment ultimatum..."
-                  className="w-full px-4 py-3 rounded-xl bg-[#0a0b0e] border border-[#262b37] focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 text-sm font-mono text-slate-200 placeholder-slate-600 transition-all resize-none"
-                />
-                <input
-                  type="text"
-                  value={senderMetadata}
-                  onChange={(e) => setSenderMetadata(e.target.value)}
-                  placeholder="Optional Sender Metadata (e.g. +1-800-ALERT, no-reply@service-update.xyz)"
-                  className="w-full px-4 py-2.5 rounded-xl bg-[#0a0b0e] border border-[#262b37] focus:border-red-500 focus:outline-none text-xs font-mono text-slate-300 placeholder-slate-600"
-                />
-              </div>
-            )}
-          </div>
 
-          {/* Quick Preset Buttons */}
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <span className="text-[11px] font-mono text-slate-500">EXAMPLES:</span>
+              <Input
+                label="OPTIONAL SENDER METADATA / PHONE / HEADER"
+                type="text"
+                value={senderMetadata}
+                onChange={(e) => setSenderMetadata(e.target.value)}
+                placeholder="e.g. +1 (800) 555-0199 or alert@usps-services.com"
+                className="font-mono text-xs"
+                leftIcon={<Mail className="w-4 h-4 text-slate-400" />}
+              />
+            </div>
+          )}
+
+          {(activeTab === "SCREENSHOT" || activeTab === "FILE") && (
+            <div className="space-y-4">
+              <div className="p-8 border-2 border-dashed border-xerox-border rounded-2xl bg-xerox-surface-elevated/40 hover:border-xerox-border-highlight text-center space-y-3 cursor-pointer">
+                <div className="w-12 h-12 rounded-2xl bg-xerox-surface border border-xerox-border mx-auto flex items-center justify-center text-slate-400">
+                  <UploadCloud className="w-6 h-6 text-xerox-red" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-bold text-white">
+                    {fileName ? fileName : `Drag & drop ${activeTab.toLowerCase()} here, or select sample below`}
+                  </p>
+                  <p className="text-xs text-slate-500 font-mono">
+                    {activeTab === "SCREENSHOT"
+                      ? "Supported: PNG, JPEG, WEBP (Max 10MB). OCR visual inspection only."
+                      : "Supported: PDF, DOCX, DOCM, EML, ZIP. Static metadata extraction only."}
+                  </p>
+                </div>
+                {fileName && (
+                  <Badge variant="safe" size="sm" icon={<FileCheck className="w-3.5 h-3.5" />}>
+                    LOADED: {fileName}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Quick Presets / Test Samples */}
+          <div className="flex flex-wrap items-center gap-2 pt-2">
+            <span className="text-[11px] font-mono text-slate-500 flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-red-400" /> Test Fixtures:
+            </span>
             {sampleTargets[activeTab].map((sample, idx) => (
               <button
                 key={idx}
                 type="button"
-                onClick={() => setInputValue(sample.val)}
-                className="text-[11px] font-mono px-2.5 py-1 rounded-md bg-[#181b24] hover:bg-[#202532] text-slate-300 border border-[#2a3040] transition-colors"
+                onClick={() => {
+                  if (activeTab === "SCREENSHOT" || activeTab === "FILE") {
+                    setFileName(sample.val);
+                    setInputValue(sample.val);
+                  } else {
+                    setInputValue(sample.val);
+                  }
+                  setReport(null);
+                }}
+                className="px-2.5 py-1 rounded-lg bg-xerox-surface-elevated hover:bg-slate-800 text-[11px] font-mono text-slate-300 border border-xerox-border transition-colors truncate max-w-[280px]"
               >
                 {sample.label}
               </button>
             ))}
           </div>
 
-          {/* Error Banner */}
-          {error && (
-            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-mono flex items-center gap-3">
-              <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* Submit Action */}
-          <div className="pt-2 flex justify-end">
-            <button
+          {/* Submit Button */}
+          <div className="pt-4 flex items-center justify-end">
+            <Button
               type="submit"
-              disabled={loading || !inputValue.trim()}
-              className="inline-flex items-center gap-2.5 px-6 py-3 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-mono text-xs font-bold tracking-wider transition-all shadow-[0_0_25px_rgba(239,68,68,0.35)]"
+              variant="primary"
+              size="lg"
+              loading={scanning}
+              loadingText="HEURISTIC PIPELINE ACTIVE..."
+              rightIcon={<Radio className="w-4 h-4 animate-pulse" />}
+              disabled={!(activeTab === "SCREENSHOT" || activeTab === "FILE" ? fileName || inputValue : inputValue.trim())}
             >
-              {loading ? (
-                <>
-                  <Cpu className="w-4 h-4 animate-spin" />
-                  ANALYZING TELEMETRY...
-                </>
-              ) : (
-                <>
-                  <span>EXECUTE HEURISTIC SCAN</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
+              ANALYZE TARGET
+            </Button>
           </div>
         </form>
-      </div>
+      </Card>
 
-      {/* Investigation Dossier Results View */}
-      {report && (
-        <div className="rounded-2xl bg-[#12141a] border border-[#222733] p-6 sm:p-8 space-y-6 animate-fade-in shadow-2xl">
-          {/* Executive Verdict Banner */}
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-[#1e222d] pb-6">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-mono text-slate-500 uppercase">
-                  INVESTIGATION DOSSIER:
-                </span>
-                <span className="text-xs font-mono text-slate-300">{report.scan_id}</span>
-              </div>
-              <h2 className="text-2xl font-bold text-white tracking-tight">
-                {report.target_type} Threat Assessment
-              </h2>
-              <div className="text-xs font-mono text-slate-400 truncate max-w-2xl">
-                TARGET: {report.defanged_target}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div
-                className={`px-4 py-2 rounded-xl text-center border font-mono font-bold ${
-                  getRiskColor(report.risk_score).bg
-                } ${getRiskColor(report.risk_score).text} ${
-                  getRiskColor(report.risk_score).border
-                } ${getRiskColor(report.risk_score).glow}`}
-              >
-                <div className="text-2xl">{report.risk_score}/100</div>
-                <div className="text-[10px] tracking-wider">{report.risk_level}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Executive Layman Verdict Callout */}
-          <div
-            className={`p-4 rounded-xl border ${
-              report.risk_score >= 70
-                ? "bg-red-500/10 border-red-500/30 text-red-300"
-                : report.risk_score <= 25
-                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
-                : "bg-yellow-500/10 border-yellow-500/30 text-yellow-300"
-            }`}
-          >
-            <div className="font-mono text-xs font-bold tracking-wider mb-1 uppercase">
-              EXECUTIVE VERDICT FOR IMMEDIATE DEFENSE:
-            </div>
-            <div className="text-sm font-semibold">{report.layman_verdict}</div>
-          </div>
-
-          {/* AI Executive Summary */}
-          <div className="space-y-2">
-            <h3 className="text-xs font-mono text-slate-400 uppercase tracking-wider">
-              ANALYST SUMMARY & HEURISTIC FINDINGS
-            </h3>
-            <p className="text-sm text-slate-300 leading-relaxed bg-[#0d0f14] p-4 rounded-xl border border-[#1e222d]">
-              {report.executive_summary}
-            </p>
-          </div>
-
-          {/* Evidence Items Breakdown */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-mono text-slate-400 uppercase tracking-wider">
-              FORENSIC EVIDENCE & TELEMETRY PROOF ({report.evidence_items.length})
-            </h3>
-            <div className="space-y-2">
-              {report.evidence_items.map((ev, idx) => (
-                <div
-                  key={idx}
-                  className="p-4 rounded-xl bg-[#0e1017] border border-[#1e222d] space-y-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-200">{ev.title}</span>
-                    <span
-                      className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
-                        ev.severity === "CRITICAL" || ev.severity === "HIGH"
-                          ? "bg-red-500/10 text-red-400 border-red-500/30"
-                          : ev.severity === "MEDIUM"
-                          ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/30"
-                          : "bg-blue-500/10 text-blue-400 border-blue-500/30"
-                      }`}
-                    >
-                      {ev.severity} // {ev.category}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-400">{ev.description}</p>
-                  <div className="text-[11px] font-mono text-slate-500 bg-[#07080b] p-2 rounded border border-[#171a24]">
-                    PROOF: {ev.technical_proof}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+      {/* Interactive Scan Progress Pipeline */}
+      {scanning && (
+        <ScanProgress
+          currentStageIndex={currentStage}
+          targetName={inputValue || fileName}
+        />
       )}
+
+      {/* Result Presentation */}
+      {report && !scanning && <AnalysisResult report={report} />}
     </div>
   );
 };

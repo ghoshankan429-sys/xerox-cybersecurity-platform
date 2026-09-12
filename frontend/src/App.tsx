@@ -6,6 +6,7 @@ import { MainLayout } from "@/layouts/MainLayout";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { AnalyzePage } from "@/pages/AnalyzePage";
 import { HistoryPage } from "@/pages/HistoryPage";
+import { ThreatIntelPage } from "@/pages/ThreatIntelPage";
 import { ReportsPage } from "@/pages/ReportsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { LoginPage } from "@/pages/LoginPage";
@@ -18,7 +19,7 @@ export const App: React.FC = () => {
         <MainLayout>
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            
+
             {/* Public Authentication Routes */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
@@ -45,6 +46,14 @@ export const App: React.FC = () => {
               element={
                 <ProtectedRoute>
                   <HistoryPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/threat-intel"
+              element={
+                <ProtectedRoute>
+                  <ThreatIntelPage />
                 </ProtectedRoute>
               }
             />

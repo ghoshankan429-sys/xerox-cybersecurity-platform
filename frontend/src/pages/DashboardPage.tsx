@@ -1,194 +1,332 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ShieldAlert,
   ShieldCheck,
   Radio,
-  FileSearch,
   ExternalLink,
   ChevronRight,
   TrendingUp,
   Cpu,
+  Globe,
+  Mail,
+  Image as ImageIcon,
+  FileCode,
+  ArrowRight,
+  Activity,
+  AlertTriangle,
 } from "lucide-react";
+import { useAuth } from "@/features/auth/AuthContext";
 import { getStats, getHistory } from "@/services/api";
 import { StatsSummary, ScanHistoryItem } from "@/types";
-import { getRiskColor, formatTimestamp } from "@/lib/utils";
+import { MOCK_DASHBOARD_STATS, MOCK_RECENT_SCANS } from "@/data/mockScans";
+import {
+  Card,
+  CardTitle,
+  CardDescription,
+  Button,
+  Badge,
+  RiskBadge,
+  StatusIndicator,
+  Input,
+} from "@/components/ui";
 
 export const DashboardPage: React.FC = () => {
-  const [stats, setStats] = useState<StatsSummary | null>(null);
-  const [recentScans, setRecentScans] = useState<ScanHistoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [stats, setStats] = useState<StatsSummary>(MOCK_DASHBOARD_STATS);
+  const [recentScans, setRecentScans] = useState<ScanHistoryItem[]>(MOCK_RECENT_SCANS);
+  const [quickUrl, setQuickUrl] = useState("");
 
   useEffect(() => {
     async function loadData() {
       try {
         const [statsData, historyData] = await Promise.all([
-          getStats().catch(() => ({
-            total_scans: 3,
-            threats_blocked: 2,
-            benign_verified: 1,
-            suspicious_flagged: 1,
-            scans_by_type: { URL: 2, MESSAGE: 1 },
-          })),
-          getHistory(5).catch(() => []),
+          getStats().catch(() => MOCK_DASHBOARD_STATS),
+          getHistory(5).catch(() => MOCK_RECENT_SCANS),
         ]);
-        setStats(statsData);
-        setRecentScans(historyData);
-      } finally {
-        setLoading(false);
+        if (statsData && statsData.total_scans > 0) {
+          setStats(statsData);
+        }
+        if (historyData && historyData.length > 0) {
+          setRecentScans(historyData);
+        }
+      } catch {
+        // Fallback to mock data
       }
     }
     loadData();
   }, []);
 
+  const handleQuickUrlSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickUrl.trim()) return;
+    navigate(`/analyze?type=url&target=${encodeURIComponent(quickUrl.trim())}`);
+  };
+
   return (
-    <div className="space-y-8">
-      {/* Hero Sentinel Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#12141a] via-[#171a22] to-[#12141a] border border-[#252936] p-6 sm:p-8 shadow-[0_0_40px_rgba(0,0,0,0.6)]">
-        <div className="absolute -right-20 -top-20 w-80 h-80 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="space-y-8 max-w-7xl mx-auto">
+      {/* Hero Sentinel Greeting Header */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-xerox-surface via-xerox-surface-card to-xerox-surface border border-xerox-border p-6 sm:p-8 shadow-panel">
+        <div className="absolute -right-16 -top-16 w-80 h-80 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-xs font-mono text-red-400">
-              <Cpu className="w-3.5 h-3.5 text-red-500 animate-pulse" />
-              <span>XEROX DEFENSIVE ENGINE // ONLINE</span>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-xs font-mono text-red-400">
+              <Cpu className="w-3.5 h-3.5 text-xerox-red animate-pulse" />
+              <span>DEFENSIVE COMMAND // TELEMETRY HUB</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              Cyber Threat Telemetry Dashboard
+              Good morning. Let's check what's suspicious.
             </h1>
-            <p className="text-sm text-slate-400 max-w-xl">
-              Real-time heuristic deconstruction and multi-vector threat scoring across URLs and social engineering lures.
+            <p className="text-xs sm:text-sm text-slate-400 max-w-xl font-sans leading-relaxed">
+              XEROX heuristic defensive engine is operational for analyst {user?.email ? user.email.split("@")[0] : "Operator"}. Inspect suspect URLs, message lures, screenshots, or files.
             </p>
           </div>
 
           <div className="flex items-center gap-3">
-            <Link
-              to="/analyze"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-mono text-xs font-bold tracking-wider transition-all shadow-[0_0_25px_rgba(239,68,68,0.4)]"
-            >
-              <Radio className="w-4 h-4 animate-pulse" />
-              NEW INVESTIGATION
+            <Link to="/analyze">
+              <Button
+                variant="primary"
+                size="lg"
+                leftIcon={<Radio className="w-4 h-4 animate-pulse" />}
+              >
+                NEW SECURITY SCAN
+              </Button>
             </Link>
           </div>
         </div>
       </div>
 
-      {/* Key Metric Telemetry Cards */}
+      {/* 4 Key Security Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-5 rounded-xl bg-[#12141a] border border-[#222733] relative overflow-hidden">
-          <div className="text-xs font-mono text-slate-400 uppercase">Total Scans Executed</div>
-          <div className="text-3xl font-extrabold text-white mt-2 font-mono">
-            {stats?.total_scans ?? 0}
-          </div>
-          <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1 font-mono">
-            <TrendingUp className="w-3 h-3 text-red-400" /> Active Heuristic Pipeline
-          </div>
-        </div>
-
-        <div className="p-5 rounded-xl bg-[#12141a] border border-red-500/20 relative overflow-hidden shadow-[0_0_20px_rgba(239,68,68,0.08)]">
+        {/* 1. Threats Detected */}
+        <Card variant="alert" className="p-5">
           <div className="text-xs font-mono text-red-400 uppercase flex items-center justify-between">
-            <span>Threats Neutralized</span>
-            <ShieldAlert className="w-4 h-4 text-red-500" />
+            <span>Threats Detected</span>
+            <ShieldAlert className="w-4 h-4 text-xerox-red" />
           </div>
           <div className="text-3xl font-extrabold text-red-400 mt-2 font-mono">
-            {stats?.threats_blocked ?? 0}
+            {stats.threats_blocked}
           </div>
-          <div className="text-[11px] text-slate-500 mt-1 font-mono">High & Critical Risks</div>
-        </div>
+          <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1 font-mono">
+            <TrendingUp className="w-3 h-3 text-red-400" /> Active Heuristic Intercepts
+          </div>
+        </Card>
 
-        <div className="p-5 rounded-xl bg-[#12141a] border border-emerald-500/20 relative overflow-hidden shadow-[0_0_20px_rgba(16,185,129,0.08)]">
+        {/* 2. Scans Completed */}
+        <Card variant="default" className="p-5">
+          <div className="text-xs font-mono text-slate-400 uppercase flex items-center justify-between">
+            <span>Scans Completed</span>
+            <Activity className="w-4 h-4 text-slate-400" />
+          </div>
+          <div className="text-3xl font-extrabold text-white mt-2 font-mono">
+            {stats.total_scans}
+          </div>
+          <div className="text-[11px] text-slate-500 mt-1 font-mono">
+            {stats.scans_by_type?.URL || 0} URLs // {stats.scans_by_type?.MESSAGE || 0} Messages
+          </div>
+        </Card>
+
+        {/* 3. High-Risk Findings */}
+        <Card variant="default" className="p-5">
+          <div className="text-xs font-mono text-amber-400 uppercase flex items-center justify-between">
+            <span>High-Risk Findings</span>
+            <AlertTriangle className="w-4 h-4 text-amber-400" />
+          </div>
+          <div className="text-3xl font-extrabold text-amber-400 mt-2 font-mono">
+            {stats.suspicious_flagged}
+          </div>
+          <div className="text-[11px] text-slate-500 mt-1 font-mono">
+            Flagged for containment
+          </div>
+        </Card>
+
+        {/* 4. Security Status */}
+        <Card variant="default" className="p-5">
           <div className="text-xs font-mono text-emerald-400 uppercase flex items-center justify-between">
-            <span>Verified Benign</span>
+            <span>Security Status</span>
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="text-3xl font-extrabold text-emerald-400 mt-2 font-mono">
-            {stats?.benign_verified ?? 0}
+          <div className="text-xl font-bold text-white mt-3 flex items-center gap-2">
+            <StatusIndicator status="online" label="SHIELD ACTIVE" size="md" />
           </div>
-          <div className="text-[11px] text-slate-500 mt-1 font-mono">Clean Corporate Assets</div>
-        </div>
-
-        <div className="p-5 rounded-xl bg-[#12141a] border border-yellow-500/20 relative overflow-hidden shadow-[0_0_20px_rgba(234,179,8,0.08)]">
-          <div className="text-xs font-mono text-yellow-400 uppercase flex items-center justify-between">
-            <span>Suspicious Flagged</span>
-            <FileSearch className="w-4 h-4 text-yellow-400" />
+          <div className="text-[11px] text-emerald-400/80 mt-1 font-mono">
+            All heuristic modules nominal
           </div>
-          <div className="text-3xl font-extrabold text-yellow-400 mt-2 font-mono">
-            {stats?.suspicious_flagged ?? 0}
-          </div>
-          <div className="text-[11px] text-slate-500 mt-1 font-mono">Informational / Caution</div>
-        </div>
+        </Card>
       </div>
 
-      {/* Recent Investigations Feed */}
-      <div className="rounded-2xl bg-[#12141a] border border-[#222733] p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-              <FileSearch className="w-5 h-5 text-red-500" />
-              Recent Security Dossiers
-            </h2>
-            <p className="text-xs text-slate-400 font-mono">
-              Live investigations logged and correlated across user sessions
+      {/* 4 Quick Analysis Cards (URL, Message, Screenshot, File) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Quick URL Card */}
+        <Card variant="default" className="flex flex-col justify-between space-y-4">
+          <div className="space-y-2">
+            <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center justify-center">
+              <Globe className="w-4 h-4" />
+            </div>
+            <CardTitle className="text-sm">URL Inspection</CardTitle>
+            <CardDescription className="text-xs">
+              Deconstruct links, check homograph spoofing & SSL anomalies.
+            </CardDescription>
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            fullWidth
+            onClick={() => navigate("/analyze?type=url")}
+            rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+          >
+            INSPECT URL
+          </Button>
+        </Card>
+
+        {/* Quick Message Card */}
+        <Card variant="default" className="flex flex-col justify-between space-y-4">
+          <div className="space-y-2">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center">
+              <Mail className="w-4 h-4" />
+            </div>
+            <CardTitle className="text-sm">Message & Smishing</CardTitle>
+            <CardDescription className="text-xs">
+              Analyze SMS, email lures, and urgency signals.
+            </CardDescription>
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            fullWidth
+            onClick={() => navigate("/analyze?type=message")}
+            rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+          >
+            TRIAGE MESSAGE
+          </Button>
+        </Card>
+
+        {/* Quick Screenshot Card */}
+        <Card variant="default" className="flex flex-col justify-between space-y-4">
+          <div className="space-y-2">
+            <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center">
+              <ImageIcon className="w-4 h-4" />
+            </div>
+            <CardTitle className="text-sm">Screenshot Analysis</CardTitle>
+            <CardDescription className="text-xs">
+              Detect fake login overlays and QR phishing lures.
+            </CardDescription>
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            fullWidth
+            onClick={() => navigate("/analyze?type=screenshot")}
+            rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+          >
+            SCAN IMAGE
+          </Button>
+        </Card>
+
+        {/* Quick File Card */}
+        <Card variant="default" className="flex flex-col justify-between space-y-4">
+          <div className="space-y-2">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center">
+              <FileCode className="w-4 h-4" />
+            </div>
+            <CardTitle className="text-sm">File & Macro Scan</CardTitle>
+            <CardDescription className="text-xs">
+              Static inspection of suspicious attachments & scripts.
+            </CardDescription>
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            fullWidth
+            onClick={() => navigate("/analyze?type=file")}
+            rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+          >
+            CHECK FILE
+          </Button>
+        </Card>
+      </div>
+
+      {/* Rapid URL One-Click Bar */}
+      <Card variant="default" className="p-4 sm:p-5">
+        <form onSubmit={handleQuickUrlSubmit} className="flex flex-col sm:flex-row items-center gap-3">
+          <div className="flex-1 w-full">
+            <Input
+              value={quickUrl}
+              onChange={(e) => setQuickUrl(e.target.value)}
+              placeholder="Quick link check: paste suspicious URL (e.g. hxxps://...)"
+              className="font-mono text-xs"
+              leftIcon={<Globe className="w-4 h-4 text-slate-400" />}
+            />
+          </div>
+          <Button
+            type="submit"
+            variant="primary"
+            size="md"
+            rightIcon={<ArrowRight className="w-4 h-4" />}
+            className="w-full sm:w-auto flex-shrink-0"
+          >
+            INSPECT TARGET
+          </Button>
+        </form>
+      </Card>
+
+      {/* Recent Scans Section */}
+      <div className="rounded-2xl bg-xerox-surface border border-xerox-border p-6 shadow-panel space-y-5">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-xerox-border-subtle pb-4">
+          <div>
+            <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+              <Activity className="w-4 h-4 text-xerox-red" />
+              Recent Security Scans
+            </h3>
+            <p className="text-xs text-slate-400 font-sans">
+              Latest forensic investigations and indicator deconstructions
             </p>
           </div>
-          <Link
-            to="/history"
-            className="text-xs font-mono text-slate-400 hover:text-red-400 flex items-center gap-1 transition-colors"
-          >
-            VIEW ALL <ChevronRight className="w-3.5 h-3.5" />
+
+          <Link to="/history">
+            <Button variant="ghost" size="sm" rightIcon={<ChevronRight className="w-4 h-4" />}>
+              VIEW FULL ARCHIVE
+            </Button>
           </Link>
         </div>
 
-        <div className="divide-y divide-[#1e222d] border border-[#1e222d] rounded-xl overflow-hidden">
-          {loading ? (
-            <div className="p-8 text-center text-slate-500 text-sm font-mono animate-pulse">
-              SYNCING TELEMETRY STREAMS...
-            </div>
-          ) : recentScans.length === 0 ? (
-            <div className="p-8 text-center text-slate-500 text-sm font-mono">
-              No recent investigations logged yet.
-            </div>
-          ) : (
-            recentScans.map((scan) => {
-              const riskStyle = getRiskColor(scan.risk_score);
-              return (
-                <div
-                  key={scan.scan_id}
-                  className="p-4 bg-[#14161f] hover:bg-[#181b26] transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-                >
-                  <div className="space-y-1 max-w-2xl">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#1e2330] text-slate-300 border border-[#2b3244]">
-                        {scan.target_type}
-                      </span>
-                      <span className="text-xs font-mono text-slate-300 font-semibold truncate max-w-md">
-                        {scan.defanged_target}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-400 line-clamp-1">
-                      {scan.executive_summary}
-                    </p>
-                    <div className="text-[10px] font-mono text-slate-500">
-                      {formatTimestamp(scan.analyzed_at)}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-                    <div
-                      className={`px-3 py-1 rounded-lg text-xs font-mono font-bold border ${riskStyle.bg} ${riskStyle.text} ${riskStyle.border}`}
-                    >
-                      SCORE: {scan.risk_score} // {scan.risk_level}
-                    </div>
-                    <Link
-                      to={`/reports?id=${scan.scan_id}`}
-                      className="p-2 rounded-lg bg-[#1e2330] hover:bg-red-500/20 text-slate-400 hover:text-red-400 border border-[#2b3244] transition-colors"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </Link>
-                  </div>
+        {/* Scans List */}
+        <div className="divide-y divide-xerox-border-subtle">
+          {recentScans.map((scan) => (
+            <div
+              key={scan.scan_id}
+              className="py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-xerox-surface-elevated/40 p-3 rounded-xl transition-colors"
+            >
+              <div className="space-y-1.5 flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline" size="sm">
+                    {scan.target_type}
+                  </Badge>
+                  <RiskBadge level={scan.risk_level} score={scan.risk_score} size="sm" />
+                  <span className="text-[11px] font-mono text-slate-500">
+                    {new Date(scan.analyzed_at).toLocaleString()}
+                  </span>
                 </div>
-              );
-            })
-          )}
+                <div className="font-mono text-xs font-bold text-white truncate max-w-xl">
+                  {scan.defanged_target}
+                </div>
+                <p className="text-xs text-slate-400 font-sans line-clamp-1">
+                  {scan.executive_summary}
+                </p>
+              </div>
+
+              <Link to={`/reports?id=${scan.scan_id}`}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  rightIcon={<ExternalLink className="w-3.5 h-3.5" />}
+                >
+                  DOSSIER
+                </Button>
+              </Link>
+            </div>
+          ))}
         </div>
       </div>
     </div>

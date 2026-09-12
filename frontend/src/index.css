@@ -3,17 +3,37 @@
 @tailwind utilities;
 
 :root {
+  --xerox-bg: #0a0b0e;
+  --xerox-surface: #12141a;
+  --xerox-surface-card: #161922;
+  --xerox-surface-elevated: #1a1e29;
+  --xerox-border: #222733;
+  --xerox-border-subtle: #1a1e28;
+  --xerox-red: #ef4444;
+  --xerox-red-bright: #ff2d20;
+  --xerox-safe: #10b981;
+  --xerox-warning: #f59e0b;
+  --xerox-info: #3b82f6;
+  --xerox-silver: #94a3b8;
   --font-mono: 'JetBrains Mono', monospace;
 }
 
 body {
   background-color: #0a0b0e;
-  color: #f1f5f9;
+  color: #f8fafc;
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom Scrollbar for Analyst Telemetry */
+/* Accessible focus visible outlines across interactive elements */
+:focus-visible {
+  outline: 2px solid #ef4444;
+  outline-offset: 2px;
+}
+
+/* Custom Telemetry Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -32,6 +52,18 @@ body {
   background: #2f384f;
 }
 
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 @keyframes scan {
   0% {
     transform: translateY(-100%);
@@ -43,4 +75,17 @@ body {
 
 .animate-scan {
   animation: scan 4s linear infinite;
+}
+
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
