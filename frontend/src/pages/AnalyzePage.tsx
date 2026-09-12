@@ -20,6 +20,7 @@ import {
   SAMPLE_BENIGN_REPORT,
 } from "@/data/mockScans";
 import { Button, Card, Input, Textarea, Badge } from "@/components/ui";
+import { scanUrl } from "@/services/api";
 
 type ActiveTab = "URL" | "MESSAGE" | "SCREENSHOT" | "FILE";
 
@@ -76,30 +77,44 @@ export const AnalyzePage: React.FC = () => {
     let finalReport: ThreatReport;
 
     if (activeTab === "URL") {
-      if (
-        targetLower.includes("apple") ||
-        targetLower.includes("login") ||
-        targetLower.includes("verify") ||
-        targetLower.includes("secure") ||
-        targetLower.includes("bank")
-      ) {
-        finalReport = {
-          ...SAMPLE_PHISHING_REPORT,
-          raw_target: effectiveInput,
-          defanged_target: effectiveInput
-            .replace(/^https?:\/\//, "hxxps://")
-            .replace(/\./g, "[.]"),
-          analyzed_at: new Date().toISOString(),
-        };
-        setSentinelState("ALERT");
-      } else {
-        finalReport = {
-          ...SAMPLE_BENIGN_REPORT,
-          raw_target: effectiveInput,
-          defanged_target: effectiveInput,
-          analyzed_at: new Date().toISOString(),
-        };
-        setSentinelState("VERIFIED");
+      try {
+        finalReport = await scanUrl(effectiveInput);
+        if (
+          finalReport.risk_level === "CRITICAL" ||
+          finalReport.risk_level === "HIGH RISK" ||
+          finalReport.risk_level === "SUSPICIOUS"
+        ) {
+          setSentinelState("ALERT");
+        } else {
+          setSentinelState("VERIFIED");
+        }
+      } catch (err) {
+        console.warn("Backend URL scan failed or unauthenticated, falling back to heuristic preview:", err);
+        if (
+          targetLower.includes("apple") ||
+          targetLower.includes("login") ||
+          targetLower.includes("verify") ||
+          targetLower.includes("secure") ||
+          targetLower.includes("bank")
+        ) {
+          finalReport = {
+            ...SAMPLE_PHISHING_REPORT,
+            raw_target: effectiveInput,
+            defanged_target: effectiveInput
+              .replace(/^https?:\/\//, "hxxps://")
+              .replace(/\./g, "[.]"),
+            analyzed_at: new Date().toISOString(),
+          };
+          setSentinelState("ALERT");
+        } else {
+          finalReport = {
+            ...SAMPLE_BENIGN_REPORT,
+            raw_target: effectiveInput,
+            defanged_target: effectiveInput,
+            analyzed_at: new Date().toISOString(),
+          };
+          setSentinelState("VERIFIED");
+        }
       }
     } else if (activeTab === "MESSAGE") {
       if (

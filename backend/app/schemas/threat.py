@@ -88,7 +88,7 @@ class ThreatReport(BaseModel):
     defanged_target: str
     risk_score: int = Field(..., ge=0, le=100)
     risk_level: RiskLevel
-    confidence_score: float = Field(..., ge=0.0, le=1.0)
+    confidence_score: float = Field(..., ge=0.0, le=100.0)
     executive_summary: str
     layman_verdict: str
     evidence_items: List[EvidenceItem]

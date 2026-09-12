@@ -11,7 +11,9 @@ export async function checkBackendHealth(): Promise<{
   service: string;
   version: string;
 }> {
-  const res = await fetch(`${API_BASE}/health`);
+  const res = await fetch(`${API_BASE}/health`, {
+    credentials: "include",
+  });
   if (!res.ok) {
     throw new Error(`Health check failed: ${res.statusText}`);
   }
@@ -19,9 +21,10 @@ export async function checkBackendHealth(): Promise<{
 }
 
 export async function scanUrl(url: string): Promise<ThreatReport> {
-  const res = await fetch(`${API_BASE}/scans/url`, {
+  const res = await fetch(`${API_BASE}/analyze/url`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify({ url, deep_scan: true }),
   });
   if (!res.ok) {
@@ -38,6 +41,7 @@ export async function scanMessage(
   const res = await fetch(`${API_BASE}/scans/message`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify({ content, sender_metadata: senderMetadata }),
   });
   if (!res.ok) {
@@ -48,7 +52,9 @@ export async function scanMessage(
 }
 
 export async function getHistory(limit: number = 50): Promise<ScanHistoryItem[]> {
-  const res = await fetch(`${API_BASE}/scans/history?limit=${limit}`);
+  const res = await fetch(`${API_BASE}/analyze/history?limit=${limit}`, {
+    credentials: "include",
+  });
   if (!res.ok) {
     throw new Error("Failed to load scan history");
   }
@@ -56,7 +62,9 @@ export async function getHistory(limit: number = 50): Promise<ScanHistoryItem[]>
 }
 
 export async function getReport(scanId: string): Promise<ThreatReport> {
-  const res = await fetch(`${API_BASE}/scans/${scanId}`);
+  const res = await fetch(`${API_BASE}/analyze/${scanId}`, {
+    credentials: "include",
+  });
   if (!res.ok) {
     throw new Error("Report not found");
   }
@@ -64,7 +72,9 @@ export async function getReport(scanId: string): Promise<ThreatReport> {
 }
 
 export async function getStats(): Promise<StatsSummary> {
-  const res = await fetch(`${API_BASE}/scans/summary/stats`);
+  const res = await fetch(`${API_BASE}/analyze/stats/summary`, {
+    credentials: "include",
+  });
   if (!res.ok) {
     throw new Error("Failed to load telemetry stats");
   }
