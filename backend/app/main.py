@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.v1.router import api_router
 from app.schemas.health import RootResponse
+from app.database.session import check_db_health
 
 
 @asynccontextmanager
@@ -38,11 +39,14 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 
 @app.get("/api/health")
 async def health_alias():
+    db_res = await check_db_health()
+    db_status = db_res.get("status", "unknown")
     return {
-        "status": "healthy",
+        "status": "healthy" if db_status == "connected" else "degraded",
         "service": "XEROX Cybersecurity Core",
         "version": settings.VERSION,
         "environment": settings.ENVIRONMENT,
+        "database": db_status,
     }
 
 
