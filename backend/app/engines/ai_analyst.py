@@ -2,6 +2,7 @@ import json
 import logging
 from datetime import datetime, timezone
 import uuid
+from app.core.datetime_utils import get_monotonic_utc_now
 
 from app.schemas.threat import (
     RiskLevel,
@@ -286,7 +287,7 @@ async def synthesize_threat_report(
         evidence_items=evidence_items,
         recommended_actions=actions,
         technical_metadata=metadata,
-        analyzed_at=datetime.now(timezone.utc).isoformat(),
+        analyzed_at=get_monotonic_utc_now().isoformat(),
     )
 
     return report

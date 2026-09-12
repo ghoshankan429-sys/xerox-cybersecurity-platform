@@ -5,6 +5,7 @@ from sqlalchemy import DateTime, ForeignKey, Integer, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database.base import Base
 from app.models.base import UUIDMixin
+from app.core.datetime_utils import get_monotonic_utc_now
 
 if TYPE_CHECKING:
     from app.models.user import User
@@ -48,6 +49,7 @@ class Scan(Base, UUIDMixin):
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
+        default=get_monotonic_utc_now,
         server_default=func.now(),
         index=True,
         nullable=False,

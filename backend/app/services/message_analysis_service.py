@@ -18,6 +18,7 @@ from app.threat_intel.virustotal import VirusTotalProvider
 from app.models.scan import Scan
 from app.models.finding import Finding
 from app.models.audit_log import AuditLog
+from app.core.datetime_utils import get_monotonic_utc_now
 from app.schemas.threat import (
     ThreatReport,
     TargetType,
@@ -175,6 +176,7 @@ class MessageAnalysisService:
             has_correlation=has_correlation,
         )
 
+        now_dt = get_monotonic_utc_now()
         # 7. Database Persistence (Strict user_id tenant isolation)
         scan = Scan(
             user_id=user_id,
@@ -182,6 +184,7 @@ class MessageAnalysisService:
             input_hash=norm_msg.content_hash,
             risk_score=assessment.score,
             verdict=assessment.level.value,
+            created_at=now_dt,
         )
         db.add(scan)
         await db.flush()  # Populates scan.id
@@ -244,7 +247,7 @@ class MessageAnalysisService:
         await db.refresh(scan)
 
         # 8. Assemble ThreatReport
-        analyzed_at_str = datetime.now(timezone.utc).isoformat()
+        analyzed_at_str = scan.created_at.isoformat()
 
         return ThreatReport(
             scan_id=str(scan.id),

@@ -15,6 +15,7 @@ from app.threat_intel.schemas import ThreatIntelResult, ThreatIntelStatus
 from app.models.scan import Scan
 from app.models.finding import Finding
 from app.models.audit_log import AuditLog
+from app.core.datetime_utils import get_monotonic_utc_now
 from app.schemas.threat import (
     ThreatReport,
     TargetType,
@@ -123,6 +124,7 @@ class URLAnalysisService:
             threat_intel_suspicious_count=suspicious_count,
         )
 
+        now_dt = get_monotonic_utc_now()
         # 5. Database Persistence (Strict user_id tenant isolation)
         scan = Scan(
             user_id=user_id,
@@ -130,6 +132,7 @@ class URLAnalysisService:
             input_hash=norm_url.url_hash,
             risk_score=assessment.score,
             verdict=assessment.level.value,
+            created_at=now_dt,
         )
         db.add(scan)
         await db.flush()  # Populates scan.id
@@ -173,7 +176,7 @@ class URLAnalysisService:
         await db.refresh(scan)
 
         # 6. Assemble ThreatReport
-        analyzed_at_str = datetime.now(timezone.utc).isoformat()
+        analyzed_at_str = scan.created_at.isoformat()
 
         return ThreatReport(
             scan_id=str(scan.id),

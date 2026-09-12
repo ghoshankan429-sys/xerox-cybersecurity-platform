@@ -25,6 +25,7 @@ from app.threat_intel.virustotal import VirusTotalProvider
 from app.models.scan import Scan
 from app.models.finding import Finding
 from app.models.audit_log import AuditLog
+from app.core.datetime_utils import get_monotonic_utc_now
 from app.schemas.threat import (
     ThreatReport,
     TargetType,
@@ -189,7 +190,7 @@ class ScreenshotAnalysisService:
 
         # 11. Database Persistence with Strict User Isolation
         scan_id = uuid.uuid4()
-        now_dt = datetime.now(timezone.utc)
+        now_dt = get_monotonic_utc_now()
 
         scan = Scan(
             id=scan_id,

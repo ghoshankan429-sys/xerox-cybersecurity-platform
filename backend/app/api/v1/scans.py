@@ -17,6 +17,8 @@ router = APIRouter(prefix="/scans", tags=["scans"])
 
 # In-memory investigation archive (persists during server lifetime)
 SCAN_DATABASE: dict[str, ThreatReport] = {}
+SCAN_ORDER: dict[str, int] = {}
+_scan_counter: int = 0
 
 # Seed initial demonstration history so dashboard and archive look populated on startup
 def _seed_initial_history():
@@ -91,8 +93,11 @@ def _seed_initial_history():
             analyzed_at="2026-09-12T10:00:00Z"
         )
     ]
+    global _scan_counter
     for sample in demo_samples:
+        _scan_counter += 1
         SCAN_DATABASE[sample.scan_id] = sample
+        SCAN_ORDER[sample.scan_id] = _scan_counter
 
 _seed_initial_history()
 
@@ -116,7 +121,10 @@ async def scan_url_endpoint(req: URLScanRequest):
         evidence_items=evidence_items,
     )
 
+    global _scan_counter
+    _scan_counter += 1
     SCAN_DATABASE[report.scan_id] = report
+    SCAN_ORDER[report.scan_id] = _scan_counter
     return report
 
 @router.post("/message", response_model=ThreatReport)
@@ -139,16 +147,19 @@ async def scan_message_endpoint(req: MessageScanRequest):
         evidence_items=evidence_items,
     )
 
+    global _scan_counter
+    _scan_counter += 1
     SCAN_DATABASE[report.scan_id] = report
+    SCAN_ORDER[report.scan_id] = _scan_counter
     return report
 
 @router.get("/history", response_model=list[ScanHistoryItem])
 async def get_scan_history(limit: int = Query(50, ge=1, le=200)):
     items: list[ScanHistoryItem] = []
-    # Sort descending by analyzed_at
+    # Sort descending by analyzed_at with insertion order as deterministic tie-breaker
     sorted_reports = sorted(
         SCAN_DATABASE.values(),
-        key=lambda r: r.analyzed_at,
+        key=lambda r: (r.analyzed_at, SCAN_ORDER.get(r.scan_id, 0)),
         reverse=True,
     )
 
