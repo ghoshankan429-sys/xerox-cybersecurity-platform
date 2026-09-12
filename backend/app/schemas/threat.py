@@ -103,6 +103,8 @@ class URLScanRequest(BaseModel):
 class MessageScanRequest(BaseModel):
     content: str
     sender_metadata: Optional[str] = None
+    subject: Optional[str] = None
+    sender: Optional[str] = None
 
 class ScanHistoryItem(BaseModel):
     scan_id: str

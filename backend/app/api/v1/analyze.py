@@ -9,10 +9,12 @@ from app.security.dependencies import get_current_user
 from app.schemas.threat import (
     ThreatReport,
     URLScanRequest,
+    MessageScanRequest,
     ScanHistoryItem,
     StatsSummary,
 )
 from app.services.url_analysis_service import URLAnalysisService
+from app.services.message_analysis_service import MessageAnalysisService
 
 router = APIRouter()
 
@@ -51,6 +53,46 @@ async def analyze_url_endpoint(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"URL security analysis failed: {str(exc)}",
+        )
+
+
+@router.post(
+    "/message",
+    response_model=ThreatReport,
+    status_code=status.HTTP_200_OK,
+    summary="Analyze suspicious message or email lure for phishing threats",
+)
+async def analyze_message_endpoint(
+    request_data: MessageScanRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ThreatReport:
+    """Performs deterministic phishing, social engineering, and embedded URL security analysis
+    on message/email content. Evaluates urgency, coercion, credential solicitation, and embedded links.
+    NEVER connects to target URLs or executes message code. Persists scan scoped to authenticated user.
+    """
+    cleaned_content = request_data.content.strip()
+    if not cleaned_content:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Message content cannot be empty.",
+        )
+
+    service = MessageAnalysisService()
+    try:
+        report = await service.analyze_message(
+            content=cleaned_content,
+            user_id=current_user.id,
+            db=db,
+            subject=request_data.subject,
+            sender=request_data.sender,
+            sender_metadata=request_data.sender_metadata,
+        )
+        return report
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Message security analysis failed: {str(exc)}",
         )
 
 

@@ -36,13 +36,20 @@ export async function scanUrl(url: string): Promise<ThreatReport> {
 
 export async function scanMessage(
   content: string,
-  senderMetadata?: string
+  senderMetadata?: string,
+  subject?: string,
+  sender?: string
 ): Promise<ThreatReport> {
-  const res = await fetch(`${API_BASE}/scans/message`, {
+  const res = await fetch(`${API_BASE}/analyze/message`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ content, sender_metadata: senderMetadata }),
+    body: JSON.stringify({
+      content,
+      sender_metadata: senderMetadata,
+      subject,
+      sender,
+    }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: "Scan failed" }));

@@ -20,7 +20,7 @@ import {
   SAMPLE_BENIGN_REPORT,
 } from "@/data/mockScans";
 import { Button, Card, Input, Textarea, Badge } from "@/components/ui";
-import { scanUrl } from "@/services/api";
+import { scanUrl, scanMessage } from "@/services/api";
 
 type ActiveTab = "URL" | "MESSAGE" | "SCREENSHOT" | "FILE";
 
@@ -117,34 +117,48 @@ export const AnalyzePage: React.FC = () => {
         }
       }
     } else if (activeTab === "MESSAGE") {
-      if (
-        targetLower.includes("usps") ||
-        targetLower.includes("customs") ||
-        targetLower.includes("charge") ||
-        targetLower.includes("urgent") ||
-        targetLower.includes("package")
-      ) {
-        finalReport = {
-          ...SAMPLE_SMISHING_REPORT,
-          raw_target: effectiveInput,
-          defanged_target: effectiveInput.replace(/https?:\/\//g, "hxxps://").replace(/\./g, "[.]"),
-          analyzed_at: new Date().toISOString(),
-        };
-        setSentinelState("ALERT");
-      } else {
-        finalReport = {
-          ...SAMPLE_BENIGN_REPORT,
-          target_type: "MESSAGE",
-          raw_target: effectiveInput,
-          defanged_target: effectiveInput,
-          risk_score: 12,
-          risk_level: "LOW RISK",
-          layman_verdict: "Benign Communication — No Social Engineering Flags",
-          executive_summary:
-            "The message payload contains standard corporate or personal communication with no urgency pressures, credential harvesting forms, or deceptive financial requests.",
-          analyzed_at: new Date().toISOString(),
-        };
-        setSentinelState("VERIFIED");
+      try {
+        finalReport = await scanMessage(effectiveInput, senderMetadata);
+        if (
+          finalReport.risk_level === "CRITICAL" ||
+          finalReport.risk_level === "HIGH RISK" ||
+          finalReport.risk_level === "SUSPICIOUS"
+        ) {
+          setSentinelState("ALERT");
+        } else {
+          setSentinelState("VERIFIED");
+        }
+      } catch (err) {
+        console.warn("Backend message scan failed or unauthenticated, falling back to heuristic preview:", err);
+        if (
+          targetLower.includes("usps") ||
+          targetLower.includes("customs") ||
+          targetLower.includes("charge") ||
+          targetLower.includes("urgent") ||
+          targetLower.includes("package")
+        ) {
+          finalReport = {
+            ...SAMPLE_SMISHING_REPORT,
+            raw_target: effectiveInput,
+            defanged_target: effectiveInput.replace(/https?:\/\//g, "hxxps://").replace(/\./g, "[.]"),
+            analyzed_at: new Date().toISOString(),
+          };
+          setSentinelState("ALERT");
+        } else {
+          finalReport = {
+            ...SAMPLE_BENIGN_REPORT,
+            target_type: "MESSAGE",
+            raw_target: effectiveInput,
+            defanged_target: effectiveInput,
+            risk_score: 12,
+            risk_level: "LOW RISK",
+            layman_verdict: "Benign Communication — No Social Engineering Flags",
+            executive_summary:
+              "The message payload contains standard corporate or personal communication with no urgency pressures, credential harvesting forms, or deceptive financial requests.",
+            analyzed_at: new Date().toISOString(),
+          };
+          setSentinelState("VERIFIED");
+        }
       }
     } else if (activeTab === "SCREENSHOT") {
       finalReport = {
