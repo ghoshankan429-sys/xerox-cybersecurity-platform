@@ -15,7 +15,7 @@ import { RegisterPage } from "@/pages/RegisterPage";
 export const App: React.FC = () => {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
         <MainLayout>
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
