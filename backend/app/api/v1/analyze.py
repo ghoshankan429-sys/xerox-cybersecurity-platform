@@ -1,6 +1,6 @@
 import uuid
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
@@ -15,6 +15,8 @@ from app.schemas.threat import (
 )
 from app.services.url_analysis_service import URLAnalysisService
 from app.services.message_analysis_service import MessageAnalysisService
+from app.services.screenshot_analysis_service import ScreenshotAnalysisService
+from app.analyzers.screenshot.validator import ImageValidationError
 
 router = APIRouter()
 
@@ -93,6 +95,51 @@ async def analyze_message_endpoint(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Message security analysis failed: {str(exc)}",
+        )
+
+
+@router.post(
+    "/screenshot",
+    response_model=ThreatReport,
+    status_code=status.HTTP_200_OK,
+    summary="Analyze suspicious screenshot for phishing, credential theft, and visual lures",
+)
+async def analyze_screenshot_endpoint(
+    file: UploadFile = File(..., description="Screenshot image file (PNG, JPEG, WEBP, max 10MB)"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ThreatReport:
+    """Performs isolated, secure visual and OCR heuristic analysis on untrusted screenshot uploads.
+    Extracts text, visual elements, and embedded links; reuses M5 URL and M6 phishing engines.
+    Persists scan strictly scoped to authenticated user.
+    """
+    try:
+        file_bytes = await file.read()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to read uploaded file: {str(exc)}",
+        )
+
+    service = ScreenshotAnalysisService()
+    try:
+        report = await service.analyze_screenshot(
+            file_bytes=file_bytes,
+            declared_mime=file.content_type,
+            client_filename=file.filename,
+            user_id=current_user.id,
+            db=db,
+        )
+        return report
+    except ImageValidationError as val_err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(val_err),
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Screenshot security analysis failed: {str(exc)}",
         )
 
 

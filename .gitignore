@@ -55,3 +55,7 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Screenshot & File Storage (Never commit user uploads)
+/storage/
+/backend/storage/

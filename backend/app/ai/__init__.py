@@ -1,1 +1,3 @@
-"""XEROX AI Explanation and LLM Provider Abstraction."""
+from app.ai.explainer import ThreatExplainer
+
+__all__ = ["ThreatExplainer"]

@@ -60,6 +60,13 @@ class Settings(BaseSettings):
     VIRUSTOTAL_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
 
+    # Screenshot Storage & Validation
+    SCREENSHOT_STORAGE_DIR: str = "storage/screenshots"
+    MAX_SCREENSHOT_SIZE_BYTES: int = 10 * 1024 * 1024  # 10 MB
+    MAX_IMAGE_WIDTH: int = 4096
+    MAX_IMAGE_HEIGHT: int = 4096
+    ALLOWED_IMAGE_TYPES: List[str] = ["image/png", "image/jpeg", "image/webp"]
+
     # Workers & Auditing
     ASYNC_AUDIT_LOGGING: bool = True
     MAX_WORKERS: int = 4
