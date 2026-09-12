@@ -5,6 +5,7 @@ from app.models.scan import Scan
 from app.models.finding import Finding
 from app.models.audit_log import AuditLog
 from app.models.feedback import Feedback
+from app.models.session import UserSession
 
 __all__ = [
     "Base",
@@ -15,4 +16,5 @@ __all__ = [
     "Finding",
     "AuditLog",
     "Feedback",
+    "UserSession",
 ]

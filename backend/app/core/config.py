@@ -1,5 +1,5 @@
-from typing import List, Union
-from pydantic import AnyHttpUrl, field_validator
+from typing import List, Optional, Union
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -37,6 +37,17 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "xerox_development_secret_key_change_in_production_32_chars_min"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
+
+    # Session & Cookie Security
+    SESSION_COOKIE_NAME: str = "xerox_session"
+    SESSION_EXPIRE_SECONDS: int = 86400 * 7  # 7 days
+    COOKIE_SECURE: bool = False  # Set to True in production
+    COOKIE_SAMESITE: str = "lax"
+    COOKIE_DOMAIN: Optional[str] = None
+
+    # Brute Force Protection
+    MAX_LOGIN_ATTEMPTS: int = 5
+    LOCKOUT_SECONDS: int = 300  # 5 minutes lockout
 
     # Database (PostgreSQL primary, fallback to SQLite for local development/testing)
     DATABASE_URL: str = "sqlite+aiosqlite:///./xerox.db"

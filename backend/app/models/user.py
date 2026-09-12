@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from app.models.scan import Scan
     from app.models.audit_log import AuditLog
     from app.models.feedback import Feedback
+    from app.models.session import UserSession
 
 
 class User(Base, UUIDMixin, TimestampMixin):
@@ -45,6 +46,13 @@ class User(Base, UUIDMixin, TimestampMixin):
     feedback: Mapped[List["Feedback"]] = relationship(
         "Feedback",
         back_populates="user",
+        lazy="selectin",
+    )
+
+    sessions: Mapped[List["UserSession"]] = relationship(
+        "UserSession",
+        back_populates="user",
+        cascade="all, delete-orphan",
         lazy="selectin",
     )
 

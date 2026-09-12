@@ -11,7 +11,11 @@ import {
   Menu,
   X,
   Radio,
+  LogOut,
+  UserCheck,
+  LogIn,
 } from "lucide-react";
+import { useAuth } from "@/features/auth/AuthContext";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -20,6 +24,7 @@ interface MainLayoutProps {
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
 
   const navItems = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -84,13 +89,27 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
           {/* System Telemetry Beacon & Auth Status */}
           <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-[#12141a] border border-[#262b37] text-xs font-mono text-slate-400">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-              </span>
-              <span className="text-emerald-400 font-semibold">GUARD ACTIVE</span>
-            </div>
+            {user ? (
+              <div className="hidden sm:flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-[#12141a] border border-[#262b37] text-xs font-mono">
+                <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="text-slate-300 max-w-[140px] truncate">{user.email}</span>
+                <button
+                  onClick={() => logout()}
+                  title="Logout"
+                  className="ml-1 text-slate-400 hover:text-red-400 transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#151821] hover:bg-[#1c202c] text-xs font-mono text-slate-300 border border-[#282e3d] transition-colors"
+              >
+                <LogIn className="w-3.5 h-3.5 text-red-400" />
+                <span>AUTHENTICATE</span>
+              </Link>
+            )}
 
             <Link
               to="/analyze"
@@ -132,6 +151,28 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 </Link>
               );
             })}
+
+            <div className="pt-2 border-t border-[#1e222d]">
+              {user ? (
+                <div className="flex items-center justify-between px-3 py-2 text-xs font-mono text-slate-300">
+                  <span className="truncate">{user.email}</span>
+                  <button
+                    onClick={() => logout()}
+                    className="flex items-center gap-1 text-red-400 hover:underline"
+                  >
+                    <LogOut className="w-3.5 h-3.5" /> Logout
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  to="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2 px-3 py-2 text-xs font-mono text-red-400"
+                >
+                  <LogIn className="w-3.5 h-3.5" /> Authenticate
+                </Link>
+              )}
+            </div>
           </div>
         )}
       </header>
