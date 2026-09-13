@@ -29,6 +29,7 @@ import {
   StatusIndicator,
   Input,
 } from "@/components/ui";
+import { XeroxThreatGlobe } from "@/components/XeroxThreatGlobe";
 
 const DEFAULT_STATS: StatsSummary = {
   total_scans: 0,
@@ -161,6 +162,11 @@ export const DashboardPage: React.FC = () => {
             All heuristic modules nominal
           </div>
         </Card>
+      </div>
+
+      {/* Central 3D Threat Telemetry Observatory */}
+      <div className="rounded-3xl border border-xerox-border bg-xerox-surface overflow-hidden shadow-panel">
+        <XeroxThreatGlobe className="w-full" />
       </div>
 
       {/* 4 Quick Analysis Cards (URL, Message, Screenshot, File) */}

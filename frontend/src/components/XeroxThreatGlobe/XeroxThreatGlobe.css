@@ -1,0 +1,349 @@
+.xerox-threat-globe {
+  position: relative;
+  isolation: isolate;
+  min-height: 520px;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 46%, #161c1f 0%, #0a0d0e 35%, #050607 74%);
+  color: #e7ecee;
+  font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+}
+
+.xerox-threat-globe:before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.22;
+  background-image: linear-gradient(rgba(143, 155, 156, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(143, 155, 156, 0.035) 1px, transparent 1px);
+  background-size: 74px 74px;
+  mask-image: radial-gradient(circle at center, #000 0%, transparent 73%);
+}
+
+.xerox-globe-frame {
+  position: absolute;
+  inset: 20px 9% 20px;
+  min-height: 480px;
+}
+
+.xerox-globe-frame canvas {
+  position: absolute !important;
+  inset: 0;
+  cursor: grab;
+}
+
+.xerox-globe-frame canvas:active {
+  cursor: grabbing;
+}
+
+.xerox-frame-corner {
+  position: absolute;
+  z-index: 3;
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+}
+
+.xerox-tl {
+  top: 0;
+  left: 0;
+  border-top: 1px solid rgba(150, 163, 165, 0.4);
+  border-left: 1px solid rgba(150, 163, 165, 0.4);
+}
+
+.xerox-tr {
+  top: 0;
+  right: 0;
+  border-top: 1px solid rgba(150, 163, 165, 0.4);
+  border-right: 1px solid rgba(150, 163, 165, 0.4);
+}
+
+.xerox-bl {
+  bottom: 0;
+  left: 0;
+  border-bottom: 1px solid rgba(150, 163, 165, 0.4);
+  border-left: 1px solid rgba(150, 163, 165, 0.4);
+}
+
+.xerox-br {
+  right: 0;
+  bottom: 0;
+  border-right: 1px solid rgba(150, 163, 165, 0.4);
+  border-bottom: 1px solid rgba(150, 163, 165, 0.4);
+}
+
+.xerox-globe-status {
+  position: absolute;
+  z-index: 3;
+  top: 15px;
+  left: 25px;
+  right: 25px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #788487;
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  pointer-events: none;
+}
+
+.xerox-globe-status > span,
+.xerox-detail-kicker > span {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #e4373f;
+  box-shadow: 0 0 9px rgba(228, 55, 63, 0.85);
+}
+
+.xerox-globe-status b {
+  margin-left: auto;
+  color: #9da7a8;
+  font-size: 8px;
+  font-weight: 400;
+}
+
+.xerox-globe-hint {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  bottom: 3px;
+  color: #647073;
+  font-size: 7px;
+  letter-spacing: 0.18em;
+  text-align: center;
+  pointer-events: none;
+}
+
+.xerox-globe-hint i {
+  margin: 0 11px;
+  color: #e4373f;
+  font-style: normal;
+}
+
+.xerox-node-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 7px;
+  border: 1px solid rgba(228, 55, 63, 0.4);
+  background: rgba(8, 10, 11, 0.88);
+  color: #e9eff0;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+}
+
+.xerox-node-label span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  box-shadow: 0 0 7px currentColor;
+}
+
+.xerox-globe-hud {
+  position: absolute;
+  z-index: 4;
+  top: 70px;
+  left: 7%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 12px;
+  border-left: 1px solid rgba(160, 171, 173, 0.28);
+}
+
+.xerox-globe-hud span,
+.xerox-globe-hud small {
+  color: #778487;
+  font-size: 8px;
+  letter-spacing: 0.16em;
+}
+
+.xerox-globe-hud strong {
+  margin-top: 8px;
+  color: #eef2f2;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 42px;
+  font-weight: 500;
+  line-height: 0.8;
+}
+
+.xerox-globe-hud em {
+  margin-top: 10px;
+  color: #e4373f;
+  font-size: 8px;
+  font-style: normal;
+  letter-spacing: 0.14em;
+}
+
+.xerox-globe-scan {
+  position: absolute;
+  z-index: 4;
+  right: 7%;
+  bottom: 45px;
+  color: #c2cacc;
+  font-size: 10px;
+  letter-spacing: 0.24em;
+}
+
+.xerox-globe-scan i {
+  color: #e4373f;
+  font-style: normal;
+}
+
+.xerox-threat-detail {
+  position: absolute;
+  z-index: 8;
+  right: 7%;
+  top: 125px;
+  width: 275px;
+  padding: 16px;
+  border: 1px solid rgba(228, 55, 63, 0.4);
+  border-right: 2px solid #e4373f;
+  background: linear-gradient(135deg, rgba(21, 24, 25, 0.97), rgba(8, 10, 11, 0.94));
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+  animation: xerox-detail-in 0.32s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@keyframes xerox-detail-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.xerox-detail-kicker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #e4373f;
+  font-size: 7px;
+  letter-spacing: 0.15em;
+}
+
+.xerox-detail-kicker button {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: #788487;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 0.6;
+}
+
+.xerox-detail-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 17px 0 6px;
+}
+
+.xerox-detail-title-row h2 {
+  flex: 1;
+  margin: 0;
+  color: #eaf0f0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 0.95;
+}
+
+.xerox-detail-title-row b {
+  padding: 4px 5px;
+  border: 1px solid;
+  font-size: 7px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+}
+
+.xerox-threat-detail > p {
+  margin: 0 0 16px;
+  color: #737f82;
+  font-size: 8px;
+  line-height: 1.55;
+}
+
+.xerox-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 10px;
+  padding: 13px 0;
+  border-top: 1px solid rgba(164, 175, 176, 0.14);
+  border-bottom: 1px solid rgba(164, 175, 176, 0.14);
+}
+
+.xerox-detail-grid div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.xerox-detail-grid span {
+  color: #667276;
+  font-size: 6px;
+  letter-spacing: 0.14em;
+}
+
+.xerox-detail-grid strong {
+  color: #bfc7c8;
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.xerox-green {
+  color: #9aaea5 !important;
+}
+
+.xerox-trace-button {
+  width: 100%;
+  margin-top: 14px;
+  padding: 9px 8px;
+  border: 1px solid rgba(228, 55, 63, 0.45);
+  background: rgba(228, 55, 63, 0.06);
+  color: #c5cdce;
+  font-size: 7px;
+  letter-spacing: 0.18em;
+  text-align: left;
+  cursor: pointer;
+}
+
+.xerox-trace-button span {
+  float: right;
+  color: #e4373f;
+  font-size: 13px;
+  line-height: 0.7;
+}
+
+@media (max-width: 700px) {
+  .xerox-threat-globe {
+    min-height: 480px;
+  }
+  .xerox-globe-frame {
+    inset: 88px 10px 20px;
+  }
+  .xerox-globe-hud {
+    top: 20px;
+    left: 22px;
+  }
+  .xerox-globe-hud strong {
+    font-size: 30px;
+  }
+  .xerox-globe-scan {
+    right: 22px;
+    bottom: 24px;
+    font-size: 7px;
+  }
+  .xerox-threat-detail {
+    top: 118px;
+    right: 14px;
+    left: 14px;
+    width: auto;
+  }
+}
