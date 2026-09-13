@@ -13,7 +13,29 @@ logger = logging.getLogger("xerox.main")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup sequence
+    # Startup sequence: Ensure all database tables exist
+    try:
+        from alembic.config import Config
+        from alembic import command
+        import asyncio
+        import os
+        alembic_ini_path = "alembic.ini" if os.path.exists("alembic.ini") else os.path.join(os.path.dirname(__file__), "..", "alembic.ini")
+        if os.path.exists(alembic_ini_path):
+            cfg = Config(alembic_ini_path)
+            await asyncio.to_thread(command.upgrade, cfg, "head")
+            logger.info("Alembic database migrations applied successfully on startup.")
+    except Exception as m_exc:
+        logger.warning("Alembic startup migration warning: %s. Ensuring tables with metadata fallback.", m_exc)
+
+    try:
+        from app.models import Base
+        from app.database.session import engine
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database schema tables verified/created successfully.")
+    except Exception as c_exc:
+        logger.error("Critical: Database table initialization failed: %s", c_exc, exc_info=True)
+
     yield
     # Shutdown sequence
 
