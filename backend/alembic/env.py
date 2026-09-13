@@ -18,9 +18,8 @@ if config.config_file_name is not None:
 # Set model MetaData for autogenerate and migrations
 target_metadata = Base.metadata
 
-# Ensure DATABASE_URL is dynamically set from settings / environment variables if not already overridden
-configured_url = config.get_main_option("sqlalchemy.url")
-if not configured_url or "localhost:5432" in configured_url:
+# Ensure DATABASE_URL is dynamically set from settings / environment variables
+if settings.DATABASE_URL:
     config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 

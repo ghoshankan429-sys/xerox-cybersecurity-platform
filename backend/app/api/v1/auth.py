@@ -110,7 +110,7 @@ async def login_user(
         key=settings.SESSION_COOKIE_NAME,
         value=session_token,
         max_age=settings.SESSION_EXPIRE_SECONDS,
-        httponly=True,
+        httponly=settings.COOKIE_HTTPONLY,
         secure=is_secure,
         samesite=settings.COOKIE_SAMESITE,
         domain=settings.COOKIE_DOMAIN,
@@ -154,7 +154,7 @@ async def logout_user(
     is_secure = settings.COOKIE_SECURE or (settings.ENVIRONMENT == "production") or (settings.COOKIE_SAMESITE.lower() == "none")
     response.delete_cookie(
         key=settings.SESSION_COOKIE_NAME,
-        httponly=True,
+        httponly=settings.COOKIE_HTTPONLY,
         secure=is_secure,
         samesite=settings.COOKIE_SAMESITE,
         domain=settings.COOKIE_DOMAIN,

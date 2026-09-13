@@ -1,10 +1,14 @@
+import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.api.v1.router import api_router
 from app.schemas.health import RootResponse
 from app.database.session import check_db_health
+
+logger = logging.getLogger("xerox.main")
 
 
 @asynccontextmanager
@@ -33,10 +37,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    """Global fallback exception handler ensuring CORS headers are always returned on 500s."""
+    logger.error(f"Unhandled exception on {request.method} {request.url}: {exc}", exc_info=True)
+    response = JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Internal server error"},
+    )
+    origin = request.headers.get("origin")
+    if origin and (origin in settings.CORS_ORIGINS or "*" in settings.CORS_ORIGINS):
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+    return response
+
+
 # Mount API v1 router
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 
+@app.get("/health")
 @app.get("/api/health")
 async def health_alias():
     db_res = await check_db_health()

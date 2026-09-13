@@ -43,8 +43,16 @@ class Settings(BaseSettings):
     SESSION_COOKIE_NAME: str = "xerox_session"
     SESSION_EXPIRE_SECONDS: int = 86400 * 7  # 7 days
     COOKIE_SECURE: bool = False  # Auto-enabled in production or when COOKIE_SAMESITE=="none"
-    COOKIE_SAMESITE: str = "lax"
+    COOKIE_SAMESITE: str = "lax"  # Auto-switched to "none" in production for cross-site auth
+    COOKIE_HTTPONLY: bool = True
     COOKIE_DOMAIN: Optional[str] = None
+
+    def model_post_init(self, __context) -> None:
+        if self.ENVIRONMENT == "production":
+            self.COOKIE_SECURE = True
+            if self.COOKIE_SAMESITE == "lax":
+                self.COOKIE_SAMESITE = "none"
+            self.DEBUG = False
 
     # Brute Force Protection
     MAX_LOGIN_ATTEMPTS: int = 5

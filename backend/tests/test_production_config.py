@@ -65,3 +65,48 @@ async def test_redis_health_probe():
     res = await check_redis_health()
     assert "status" in res
     assert res["status"] in ("connected", "bypassed", "degraded", "unreachable")
+
+
+def test_production_environment_cookie_and_security_defaults():
+    """Verify that in production environment, secure cross-site cookie settings are automatically applied."""
+    prod_settings = Settings(ENVIRONMENT="production")
+    assert prod_settings.ENVIRONMENT == "production"
+    assert prod_settings.COOKIE_SECURE is True
+    assert prod_settings.COOKIE_SAMESITE == "none"
+    assert prod_settings.COOKIE_HTTPONLY is True
+    assert prod_settings.DEBUG is False
+
+
+@pytest.mark.asyncio
+async def test_health_alias_endpoints(async_client: AsyncClient):
+    """Verify that both /health and /api/health return healthy 200 responses."""
+    r1 = await async_client.get("/health")
+    assert r1.status_code == 200
+    assert r1.json()["status"] == "healthy"
+
+    r2 = await async_client.get("/api/health")
+    assert r2.status_code == 200
+    assert r2.json()["status"] == "healthy"
+
+
+@pytest.mark.asyncio
+async def test_unhandled_exception_preserves_cors():
+    """Verify that an unhandled 500 exception returns JSON with CORS headers intact."""
+    from httpx import ASGITransport, AsyncClient as CleanClient
+    from app.main import app
+
+    # Temporarily register a test route that raises an unhandled error
+    @app.get("/api/test-crash")
+    async def crash_endpoint():
+        raise RuntimeError("Simulated unhandled internal database failure")
+
+    async with CleanClient(transport=ASGITransport(app=app, raise_app_exceptions=False), base_url="http://test") as client:
+        resp = await client.get(
+            "/api/test-crash",
+            headers={"Origin": "https://ghoshankan429-sys.github.io"},
+        )
+        assert resp.status_code == 500
+        assert resp.headers.get("access-control-allow-origin") == "https://ghoshankan429-sys.github.io"
+        assert resp.headers.get("access-control-allow-credentials") == "true"
+        data = resp.json()
+        assert data["detail"] == "Internal server error"
