@@ -51,4 +51,6 @@ jobs:
 
       - name: Build frontend
         working-directory: ./frontend
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://web-production-69de4.up.railway.app/api/v1' }}
         run: npm run build
