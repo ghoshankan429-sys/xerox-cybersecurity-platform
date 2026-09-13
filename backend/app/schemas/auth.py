@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Optional
 from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 from app.security.passwords import validate_password_strength
 
@@ -40,6 +41,7 @@ class UserResponse(BaseModel):
     id: uuid.UUID
     email: str
     created_at: datetime
+    session_token: Optional[str] = None
 
 
 class MessageResponse(BaseModel):

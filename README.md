@@ -1,122 +1,236 @@
-# XEROX — Standalone AI-Assisted Cybersecurity Analysis Platform
+# XEROX — Autonomous Defensive Cybersecurity Intelligence Platform
+
+[![CI Pipeline](https://github.com/ghoshankan429-sys/xerox-cybersecurity-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/ghoshankan429-sys/xerox-cybersecurity-platform/actions/workflows/ci.yml)
+[![GitHub Pages](https://github.com/ghoshankan429-sys/xerox-cybersecurity-platform/actions/workflows/deploy-pages.yml/badge.svg)](https://ghoshankan429-sys.github.io/xerox-cybersecurity-platform/)
 
 > **"Is this suspicious, why is it suspicious, and what should I do?"**
 
-XEROX is an autonomous, standalone cybersecurity analysis platform designed to inspect suspicious URLs and social engineering lures through deterministic evidence, threat intelligence, and explainable AI summaries.
+XEROX is a production-hardened, defense-in-depth cybersecurity platform engineered to triage suspect URLs, phishing/smishing messages, and deceptive screenshot overlays through deterministic rule engines, reputation intelligence, and explainable AI dossiers.
 
 ---
 
-## Core Pipeline Architecture
+## Live Deployment Architecture
 
 ```
-User Input (URL / Message)
-         │
-         ▼
-Input Normalization
-         │
-         ▼
-Deterministic Security Engine
-         │
-         ▼
-Redis Cache
-  ├── HIT  → Cached Threat Intel
-  └── MISS → Threat Intel Adapter (VirusTotal) ──> Cache in Redis with TTL
-         │
-         ▼
-Structured Findings
-         │
-         ▼
-AI Explanation (Google Gemini / Fallback)
-         │
-         ▼
-Security Report & Async Audit Logging
+                       ┌───────────────────────────────────────────────┐
+                       │       GitHub Pages (React 18 + Vite)          │
+                       │ https://ghoshankan429-sys.github.io/           │
+                       │        xerox-cybersecurity-platform/          │
+                       └───────────────────────┬───────────────────────┘
+                                               │
+                                 Dual Auth (HttpOnly Cookie +
+                                  Bearer Session Fallback)
+                                               │
+                                               ▼
+                       ┌───────────────────────────────────────────────┐
+                       │          Public FastAPI API Backend           │
+                       │           (Render / Railway / Docker)         │
+                       └───────────────┬───────────────┬───────────────┘
+                                       │               │
+                        Structured DB  │               │ High-Speed Cache &
+                        Persistence    │               │ Rate Limiting
+                                       ▼               ▼
+                       ┌──────────────────┐ ┌──────────────────┐
+                       │  PostgreSQL 16   │ │     Redis 7      │
+                       │ (Alembic Migr.)  │ │  (Graceful Fall) │
+                       └──────────────────┘ └──────────────────┘
+                                       │
+                      ┌────────────────┴────────────────┐
+                      ▼                                 ▼
+         ┌─────────────────────────┐       ┌─────────────────────────┐
+         │ Deterministic Analyzers │       │   Threat Intelligence   │
+         │  - URL Security Engine  │       │   - Redis Cache TTL     │
+         │  - Phishing Message Eng │       │   - VirusTotal API      │
+         │  - Screenshot Vision/OCR│       │   - Private IP SSRF Blk │
+         └────────────┬────────────┘       └────────────┬────────────┘
+                      │                                 │
+                      └────────────────┬────────────────┘
+                                       │
+                                       ▼
+                       ┌───────────────────────────────┐
+                       │     Evidence-Based AI         │
+                       │   (Google Gemini / Static)    │
+                       └───────────────┬───────────────┘
+                                       │
+                                       ▼
+                       ┌───────────────────────────────┐
+                       │ Comprehensive Security Dossier│
+                       │  - Layman & Executive Verdict │
+                       │  - Defanged IOC Indicators    │
+                       │  - Actionable Remediation     │
+                       └───────────────────────────────┘
 ```
 
 ---
 
-## Monorepo Layout
+## Key Capabilities (Milestones 1–8)
+
+1. **Deterministic URL Security Engine**
+   - RFC 3986 canonicalization, refanging, defanging, and SHA-256 identification.
+   - Comprehensive detection: IDN homograph attacks, brand impersonation, high-risk TLDs, ephemeral cloud abuse, and excessive subdomain depth.
+   - SSRF and private network access prevention across IPv4/IPv6 loopbacks and RFC 1918 blocks.
+2. **Message & Phishing Analysis Engine**
+   - Unicode NFKC normalization, control-character stripping, and full defanging.
+   - Regex-based IOC extraction: URLs, email addresses, phone numbers, IP addresses.
+   - Heuristic classification: urgency triggers, financial/gift-card lures, display-name spoofing, and credential harvesting demands.
+3. **Screenshot & Visual Analysis Engine**
+   - Secure byte-level magic-number validation (PNG, JPEG, WEBP), dimension checking, and path-traversal immunization.
+   - Optical character recognition (OCR) and layout analysis for credential dialog lures and fake login forms.
+   - Cross-correlated visual scoring with extracted URLs and brand mismatch telemetry.
+4. **Analyst Feedback System (`/api/v1/feedback`)**
+   - Analysts can submit accuracy judgments, classification labels, and technical notes on any scan dossier.
+   - Enforces strict tenant isolation and foreign key referential integrity in PostgreSQL.
+5. **Dual Authentication Model**
+   - Native HttpOnly `SameSite=None; Secure` cookies for production web apps.
+   - Bearer token / `X-Session-Token` fallback enabling seamless cross-domain operation from GitHub Pages static frontend to public backends.
+6. **Resilient Persistence & Distributed Caching**
+   - PostgreSQL 16 via async SQLAlchemy + Alembic migrations with automatic URL protocol normalization (`postgres://` / `postgresql://` -> `postgresql+asyncpg://`).
+   - Redis 7 caching with automatic degraded fallback and live health probing in `/health`.
+
+---
+
+## Repository Structure
 
 ```
 /xerox
-  /frontend              # React 18, Vite, TypeScript, Tailwind CSS
-    /src
-      /components        # Sentinel Robot HUD, visualizers
-      /pages             # Dashboard, Analyze, History, Reports, Settings, Auth
-      /layouts           # MainLayout & navigation
-      /features          # auth, dashboard, analysis, history, reports, settings
-      /services          # API client layer
-      /hooks             # UI and telemetry hooks
-      /types             # Unified type definitions
-      /lib               # Utilities and styling helpers
-  /backend               # Python FastAPI backend
-    /app
-      /api               # Versioned API routes (/api/v1)
-      /core              # Settings, configuration, logging
-      /models            # SQLAlchemy PostgreSQL models
-      /schemas           # Pydantic request/response contracts
-      /services          # Application business logic
-      /security          # Auth, password hashing, JWT
-      /analyzers         # Deterministic URL and Message analyzers
-      /threat_intel      # Provider abstraction & VirusTotal adapter
-      /ai                # LLM explanation provider abstraction
-      /cache             # Redis cache client & graceful fallback
-      /database          # Database engine and session lifecycle
-      /workers           # Asynchronous audit log dispatchers
-  /docs                  # Architecture and security specifications
-  /tests                 # Monorepo and integration test suites
-  /.github               # CI/CD automated workflow definitions
-  .env.example           # Environment template (no secrets)
-  README.md              # Project overview and runbook
+  ├── .github/workflows/          # CI/CD pipelines (Backend test matrix, GitHub Pages)
+  ├── backend/                    # FastAPI asynchronous application
+  │   ├── alembic/                # Database schema migrations
+  │   ├── app/
+  │   │   ├── ai/                 # Gemini LLM explanation provider & fallback
+  │   │   ├── analyzers/          # Deterministic heuristic engines (URL, Message, Screenshot)
+  │   │   ├── api/v1/             # Versioned routers (auth, analyze, feedback, health)
+  │   │   ├── cache/              # Redis distributed cache client
+  │   │   ├── core/               # Settings, config validation, logging
+  │   │   ├── models/             # SQLAlchemy PostgreSQL entities
+  │   │   ├── schemas/            # Pydantic validation contracts
+  │   │   ├── security/           # Dual authentication, password hashing, session tokens
+  │   │   ├── threat_intel/       # VirusTotal adapter & threat caching
+  │   │   └── main.py             # FastAPI entrypoint
+  │   ├── tests/                  # 120+ Pytest automated verification tests
+  │   ├── Dockerfile              # Backend container definition
+  │   └── requirements.txt        # Pinned production Python dependencies
+  ├── frontend/                   # React 18, Vite, TypeScript, Tailwind CSS
+  │   ├── src/
+  │   │   ├── components/         # Cyber-Guardian HUD, badges, dossiers, error states
+  │   │   ├── features/auth/      # Dual-mode AuthContext (cookies + session token)
+  │   │   ├── pages/              # Dashboard, Analyze, History, Reports, Auth
+  │   │   ├── services/           # Authenticated API client layer
+  │   │   └── types/              # Forensic threat contracts
+  │   ├── Dockerfile              # Production multi-stage Nginx container
+  │   └── nginx.conf              # SPA routing reverse proxy
+  ├── docker-compose.yml          # 4-service stack (postgres, redis, backend, frontend)
+  ├── .env.example                # Comprehensive configuration template
+  ├── Procfile                    # Cloud web service entrypoint
+  ├── railway.json                # Railway deployment manifest
+  └── render.yaml                 # Render Blueprint Infrastructure-as-Code
 ```
 
 ---
 
 ## Quick Start Guide
 
-### Prerequisites
-- Python 3.11+ (tested on Python 3.14)
-- Node.js 20+ (tested on Node.js 24)
-- npm 10+
+### Option A: Complete 4-Service Docker Compose Stack (Recommended)
 
-### 1. Configure Environment
+Run the complete production stack (PostgreSQL, Redis, FastAPI backend, and Vite frontend) with a single command:
+
 ```bash
+# 1. Clone the repository
+git clone https://github.com/ghoshankan429-sys/xerox-cybersecurity-platform.git
+cd xerox-cybersecurity-platform
+
+# 2. Copy environment template
 cp .env.example .env
+
+# 3. Launch all services
+docker compose up --build
 ```
 
-### 2. Backend Setup
+- **Frontend UI**: `http://localhost:3000`
+- **Backend API**: `http://localhost:8000`
+- **API Documentation**: `http://localhost:8000/docs`
+- **Health Check**: `http://localhost:8000/health`
+
+---
+
+### Option B: Local Development Setup
+
+#### 1. Backend Setup
 ```bash
 cd backend
 python -m venv venv
-.\venv\Scripts\activate          # On Windows (or source venv/bin/activate on Linux/macOS)
-python -m pip install -r requirements.txt
+
+# Windows:
+.\venv\Scripts\activate
+# Linux / macOS:
+# source venv/bin/activate
+
+pip install -r requirements.txt
+alembic upgrade head
 uvicorn app.main:app --reload --port 8000
 ```
-- API Base: `http://127.0.0.1:8000`
-- Swagger Docs: `http://127.0.0.1:8000/docs`
-- Health Endpoint: `http://127.0.0.1:8000/api/v1/health`
 
-### 3. Frontend Setup
+#### 2. Frontend Setup
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-- Frontend UI: `http://localhost:5173`
 
-### 4. Run Automated Tests
+The frontend development server starts at `http://localhost:5173`.
+
+---
+
+## Verification & Automated Testing
+
+### Backend Test Suite (120+ Tests)
 ```bash
-# Run full suite from repository root:
-.\backend\venv\Scripts\python.exe -m pytest tests backend/tests -v
+cd backend
+pytest -v
+```
 
-# Frontend build & typecheck:
-cd frontend && npm run build
+All tests execute against an isolated asynchronous SQLite test database and mock threat intelligence providers, verifying:
+- Authentication, session invalidation, and timing-safe password verification
+- Deterministic URL normalization, refanging/defanging, and SSRF prevention
+- Message phishing detection and IOC extraction
+- Screenshot magic-byte validation, dimensions, and path-traversal defenses
+- Feedback API and tenant data isolation
+- Redis health check probing and monotonic scan history sorting
+
+### Frontend Typecheck & Build
+```bash
+cd frontend
+npm run lint    # Runs tsc --noEmit
+npm run build   # Generates production bundle in frontend/dist
 ```
 
 ---
 
+## Public Cloud Deployment
+
+### Deploying Backend to Render
+1. Connect your repository to [Render](https://render.com).
+2. Use the included `render.yaml` Blueprint to automatically provision:
+   - FastAPI Web Service
+   - PostgreSQL 16 Database
+   - Redis Instance
+3. Set `CORS_ORIGINS` to `["https://ghoshankan429-sys.github.io"]`.
+
+### Deploying Backend to Railway
+1. Connect your repository to [Railway](https://railway.app).
+2. Railway will automatically detect `railway.json` and build `backend/Dockerfile`.
+3. Add PostgreSQL and Redis services from the Railway template marketplace.
+
+### Frontend on GitHub Pages
+The frontend deploys automatically to GitHub Pages on every push to `master` via the `.github/workflows/deploy-pages.yml` workflow.
+
+---
+
 ## Defensive Security Boundaries
-XEROX is strictly defensive:
-- Never detonates or executes malware
-- Never executes untrusted links or JavaScript
-- Never stores unhashed passwords or plain-text secrets
-- Scopes all user queries to the authenticated tenant
+
+XEROX is strictly a defensive cybersecurity triage platform:
+- **No Active Exploitation**: Never executes untrusted binaries, scripts, or payloads.
+- **SSRF Immunization**: Never makes outbound connections to private, loopback, or reserved IP ranges.
+- **Tenant Isolation**: Every scan and feedback record is cryptographically bound to the authenticated user.
+- **Zero Plain-Text Secrets**: Passwords hashed with bcrypt; session cookies encrypted and signed with HMAC.
+- **Sanitized Filenames**: All visual screenshot artifacts are stored with cryptographically generated UUIDs outside public web trees.

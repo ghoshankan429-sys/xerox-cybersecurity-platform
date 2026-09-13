@@ -1,15 +1,58 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: xerox-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-xerox}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-xerox_secure_pass_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-xerox}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-xerox} -d ${POSTGRES_DB:-xerox}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: xerox-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: xerox-backend
+    restart: unless-stopped
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
     ports:
       - "8000:8000"
     environment:
+      - ENVIRONMENT=production
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-xerox}:${POSTGRES_PASSWORD:-xerox_secure_pass_2026}@postgres:5432/${POSTGRES_DB:-xerox}
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-change_this_in_production_jwt_and_cookie_signing_key_32bytes}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - CORS_ORIGINS=["*"]
-    restart: unless-stopped
+      - VIRUSTOTAL_API_KEY=${VIRUSTOTAL_API_KEY:-}
+      - CORS_ORIGINS=["http://localhost:3000","https://ghoshankan429-sys.github.io"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   frontend:
     build:
@@ -18,10 +61,14 @@ services:
       args:
         - VITE_API_URL=http://localhost:8000/api/v1
     container_name: xerox-frontend
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
       - VITE_API_URL=http://localhost:8000/api/v1
     depends_on:
       - backend
-    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:

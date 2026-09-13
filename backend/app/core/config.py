@@ -24,6 +24,7 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
+        "https://ghoshankan429-sys.github.io",
     ]
 
     @field_validator("CORS_ORIGINS", mode="before")
@@ -41,7 +42,7 @@ class Settings(BaseSettings):
     # Session & Cookie Security
     SESSION_COOKIE_NAME: str = "xerox_session"
     SESSION_EXPIRE_SECONDS: int = 86400 * 7  # 7 days
-    COOKIE_SECURE: bool = False  # Set to True in production
+    COOKIE_SECURE: bool = False  # Auto-enabled in production or when COOKIE_SAMESITE=="none"
     COOKIE_SAMESITE: str = "lax"
     COOKIE_DOMAIN: Optional[str] = None
 
@@ -51,6 +52,19 @@ class Settings(BaseSettings):
 
     # Database (PostgreSQL primary, fallback to SQLite for local development/testing)
     DATABASE_URL: str = "sqlite+aiosqlite:///./xerox.db"
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def assemble_database_url(cls, v: str) -> str:
+        if isinstance(v, str):
+            v_clean = v.strip()
+            # Auto-normalize standard postgres:// or postgresql:// to asyncpg driver
+            if v_clean.startswith("postgres://"):
+                return "postgresql+asyncpg://" + v_clean[len("postgres://"):]
+            if v_clean.startswith("postgresql://") and not v_clean.startswith("postgresql+"):
+                return "postgresql+asyncpg://" + v_clean[len("postgresql://"):]
+            return v_clean
+        return v
 
     # Cache (Redis primary, fallback to in-memory/fakeredis)
     REDIS_URL: str = "redis://localhost:6379/0"

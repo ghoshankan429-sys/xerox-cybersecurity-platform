@@ -10,16 +10,12 @@ import {
   UploadCloud,
   FileCheck,
   X as XIcon,
+  AlertTriangle,
 } from "lucide-react";
 import { ThreatReport, SentinelState } from "@/types";
 import { SentinelRobotHUD } from "@/components/sentinel/SentinelRobotHUD";
 import { ScanProgress } from "@/components/threat/ScanProgress";
 import { AnalysisResult } from "@/components/threat/AnalysisResult";
-import {
-  SAMPLE_PHISHING_REPORT,
-  SAMPLE_SMISHING_REPORT,
-  SAMPLE_BENIGN_REPORT,
-} from "@/data/mockScans";
 import { Button, Card, Input, Textarea, Badge } from "@/components/ui";
 import { scanUrl, scanMessage, scanScreenshot } from "@/services/api";
 
@@ -44,6 +40,7 @@ export const AnalyzePage: React.FC = () => {
   const [currentStage, setCurrentStage] = useState(0);
   const [report, setReport] = useState<ThreatReport | null>(null);
   const [sentinelState, setSentinelState] = useState<SentinelState>("IDLE");
+  const [scanError, setScanError] = useState<string | null>(null);
 
   // Synchronize when query params change
   useEffect(() => {
@@ -57,6 +54,7 @@ export const AnalyzePage: React.FC = () => {
 
   const handleFileChange = (file: File | null) => {
     setUploadError(null);
+    setScanError(null);
     if (!file) {
       setSelectedFile(null);
       setPreviewUrl(null);
@@ -87,254 +85,69 @@ export const AnalyzePage: React.FC = () => {
     setPreviewUrl(null);
     setFileName("");
     setUploadError(null);
+    setScanError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
-  // Handle analysis initiation with multi-stage security pipeline simulation
+  // Handle analysis initiation with live multi-stage security pipeline
   const handleAnalyze = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const effectiveInput = activeTab === "SCREENSHOT" || activeTab === "FILE"
-      ? fileName || inputValue || "sample_artifact.dat"
+      ? fileName || inputValue || ""
       : inputValue;
 
-    if (!effectiveInput.trim()) return;
+    if (!effectiveInput.trim() && !selectedFile) return;
 
     setReport(null);
+    setScanError(null);
     setScanning(true);
     setCurrentStage(0);
     setSentinelState("SCANNING");
 
-    // Step through the 6 stages:
-    // 0: Input received -> 1: Indicators extracted -> 2: Security rules checked
-    // -> 3: Threat intelligence -> 4: Risk assessment -> 5: AI explanation -> 6: Done
-    for (let stage = 1; stage <= 6; stage++) {
-      await new Promise((resolve) => setTimeout(resolve, 380));
-      setCurrentStage(stage);
-    }
+    // Stage progression animation interval
+    const stageInterval = setInterval(() => {
+      setCurrentStage((prev) => (prev < 5 ? prev + 1 : prev));
+    }, 280);
 
-    // Determine realistic report fixture based on target contents and tab
-    const targetLower = effectiveInput.toLowerCase();
-    let finalReport: ThreatReport;
+    try {
+      let finalReport: ThreatReport;
 
-    if (activeTab === "URL") {
-      try {
-        finalReport = await scanUrl(effectiveInput);
-        if (
-          finalReport.risk_level === "CRITICAL" ||
-          finalReport.risk_level === "HIGH RISK" ||
-          finalReport.risk_level === "SUSPICIOUS"
-        ) {
-          setSentinelState("ALERT");
-        } else {
-          setSentinelState("VERIFIED");
+      if (activeTab === "URL") {
+        finalReport = await scanUrl(effectiveInput.trim());
+      } else if (activeTab === "MESSAGE") {
+        finalReport = await scanMessage(effectiveInput.trim(), senderMetadata.trim() || undefined);
+      } else if (activeTab === "SCREENSHOT") {
+        if (!selectedFile) {
+          throw new Error("Please select or drop an image file (PNG, JPEG, WEBP) to inspect.");
         }
-      } catch (err) {
-        console.warn("Backend URL scan failed or unauthenticated, falling back to heuristic preview:", err);
-        if (
-          targetLower.includes("apple") ||
-          targetLower.includes("login") ||
-          targetLower.includes("verify") ||
-          targetLower.includes("secure") ||
-          targetLower.includes("bank")
-        ) {
-          finalReport = {
-            ...SAMPLE_PHISHING_REPORT,
-            raw_target: effectiveInput,
-            defanged_target: effectiveInput
-              .replace(/^https?:\/\//, "hxxps://")
-              .replace(/\./g, "[.]"),
-            analyzed_at: new Date().toISOString(),
-          };
-          setSentinelState("ALERT");
-        } else {
-          finalReport = {
-            ...SAMPLE_BENIGN_REPORT,
-            raw_target: effectiveInput,
-            defanged_target: effectiveInput,
-            analyzed_at: new Date().toISOString(),
-          };
-          setSentinelState("VERIFIED");
-        }
+        finalReport = await scanScreenshot(selectedFile);
+      } else {
+        throw new Error("File static analysis module is currently isolated for sandboxing. Please test URL, Message, or Screenshot analysis.");
       }
-    } else if (activeTab === "MESSAGE") {
-      try {
-        finalReport = await scanMessage(effectiveInput, senderMetadata);
-        if (
-          finalReport.risk_level === "CRITICAL" ||
-          finalReport.risk_level === "HIGH RISK" ||
-          finalReport.risk_level === "SUSPICIOUS"
-        ) {
-          setSentinelState("ALERT");
-        } else {
-          setSentinelState("VERIFIED");
-        }
-      } catch (err) {
-        console.warn("Backend message scan failed or unauthenticated, falling back to heuristic preview:", err);
-        if (
-          targetLower.includes("usps") ||
-          targetLower.includes("customs") ||
-          targetLower.includes("charge") ||
-          targetLower.includes("urgent") ||
-          targetLower.includes("package")
-        ) {
-          finalReport = {
-            ...SAMPLE_SMISHING_REPORT,
-            raw_target: effectiveInput,
-            defanged_target: effectiveInput.replace(/https?:\/\//g, "hxxps://").replace(/\./g, "[.]"),
-            analyzed_at: new Date().toISOString(),
-          };
-          setSentinelState("ALERT");
-        } else {
-          finalReport = {
-            ...SAMPLE_BENIGN_REPORT,
-            target_type: "MESSAGE",
-            raw_target: effectiveInput,
-            defanged_target: effectiveInput,
-            risk_score: 12,
-            risk_level: "LOW RISK",
-            layman_verdict: "Benign Communication — No Social Engineering Flags",
-            executive_summary:
-              "The message payload contains standard corporate or personal communication with no urgency pressures, credential harvesting forms, or deceptive financial requests.",
-            analyzed_at: new Date().toISOString(),
-          };
-          setSentinelState("VERIFIED");
-        }
-      }
-    } else if (activeTab === "SCREENSHOT") {
-      try {
-        if (selectedFile) {
-          finalReport = await scanScreenshot(selectedFile);
-        } else {
-          // If a sample preset was selected without a file, create a synthetic PNG blob
-          const canvas = document.createElement("canvas");
-          canvas.width = 400;
-          canvas.height = 300;
-          const ctx = canvas.getContext("2d");
-          if (ctx) {
-            ctx.fillStyle = "#0f172a";
-            ctx.fillRect(0, 0, 400, 300);
-            ctx.fillStyle = "#ef4444";
-            ctx.font = "bold 16px sans-serif";
-            ctx.fillText("XEROX SECURITY TEST FIXTURE", 20, 50);
-            ctx.fillStyle = "#ffffff";
-            ctx.font = "14px monospace";
-            ctx.fillText(effectiveInput, 20, 100);
-            ctx.fillText("Sign in to your account: https://apple-verify.support-secure.live", 20, 140);
-            ctx.fillText("Enter your Apple ID and Password immediately", 20, 170);
-          }
-          const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), "image/png"));
-          const syntheticFile = new File([blob], effectiveInput.endsWith(".png") ? effectiveInput : `${effectiveInput}.png`, { type: "image/png" });
-          finalReport = await scanScreenshot(syntheticFile);
-        }
 
-        if (
-          finalReport.risk_level === "CRITICAL" ||
-          finalReport.risk_level === "HIGH RISK" ||
-          finalReport.risk_level === "SUSPICIOUS"
-        ) {
-          setSentinelState("ALERT");
-        } else {
-          setSentinelState("VERIFIED");
-        }
-      } catch (err) {
-        console.warn("Backend screenshot scan failed or unauthenticated, falling back to heuristic preview:", err);
-        finalReport = {
-          scan_id: "scan_screen_8f3d1b",
-          target_type: "SCREENSHOT",
-          raw_target: effectiveInput,
-          defanged_target: `[SCREENSHOT]: ${effectiveInput}`,
-          risk_score: 84,
-          risk_level: "HIGH RISK",
-          confidence_score: 91,
-          layman_verdict: "High-Risk Deceptive Login Dialog Detected in Visual Frame",
-          executive_summary:
-            "Optical analysis identified counterfeit Microsoft 365 login branding overlaying an arbitrary background, characteristic of evil-twin portal phishing.",
-          evidence_items: [
-            {
-              category: "IDENTITY",
-              severity: "HIGH",
-              title: "Logo & Brand Layout Spoofing",
-              description: "Visual layout matches Microsoft Single Sign-On template with 98.4% perceptual hash match.",
-              technical_proof: "Perceptual Hash: d41d8cd98f00b204e9800998ecf8427e",
-              why_this_matters: "Lures use exact pixel copies of enterprise login dialogs to deceive users into credential entry.",
-            },
-          ],
-          recommended_actions: [
-            {
-              priority: "IMMEDIATE",
-              action: "Do not input credentials into matching browser tab",
-              rationale: "Adversary portal harvesting active passwords.",
-              action_type: "DO_NOT_CLICK",
-            },
-          ],
-          technical_metadata: {
-            domain: "visual-capture.local",
-            subdomain: "",
-            registered_domain: "visual-capture.local",
-            tld: "local",
-            ip_addresses: [],
-            redirect_hops: [],
-            entropy: 4.1,
-            detected_brands: ["Microsoft 365"],
-            extracted_urls: [],
-            social_engineering_flags: ["Counterfeit visual brand layout"],
-          },
-          analyzed_at: new Date().toISOString(),
-        };
+      clearInterval(stageInterval);
+      setCurrentStage(6);
+
+      if (
+        finalReport.risk_level === "CRITICAL" ||
+        finalReport.risk_level === "HIGH RISK" ||
+        finalReport.risk_level === "SUSPICIOUS"
+      ) {
         setSentinelState("ALERT");
+      } else {
+        setSentinelState("VERIFIED");
       }
-    } else {
-      // FILE tab
-      finalReport = {
-        scan_id: "scan_file_2c9e7a",
-        target_type: "URL", // mapped to standard target
-        raw_target: effectiveInput,
-        defanged_target: `[FILE]: ${effectiveInput} (SHA256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855)`,
-        risk_score: 89,
-        risk_level: "HIGH RISK",
-        confidence_score: 95,
-        layman_verdict: "Suspicious Embedded Macro / Obfuscated Scripting",
-        executive_summary:
-          "Static inspection of the document container detected auto-executing VBA scripts configured to spawn powershell.exe upon opening.",
-        evidence_items: [
-          {
-            category: "CONTENT",
-            severity: "CRITICAL",
-            title: "Auto-executing Macro (Auto_Open)",
-            description: "Embedded macro initiates execution without explicit user consent.",
-            technical_proof: "Strings matched: 'Auto_Open', 'WScript.Shell', 'powershell -enc'",
-            why_this_matters: "Document delivery is the primary delivery vehicle for loader malware.",
-          },
-        ],
-        recommended_actions: [
-          {
-            priority: "IMMEDIATE",
-            action: "Do not enable macros or approve editing mode",
-            rationale: "Enabling content triggers script execution on the local workstation.",
-            action_type: "DO_NOT_CLICK",
-          },
-        ],
-        technical_metadata: {
-          domain: "attachment-stream.local",
-          subdomain: "",
-          registered_domain: "attachment-stream.local",
-          tld: "local",
-          ip_addresses: [],
-          redirect_hops: [],
-          entropy: 7.2,
-          detected_brands: [],
-          extracted_urls: [],
-          social_engineering_flags: ["Macro enablement prompt"],
-        },
-        analyzed_at: new Date().toISOString(),
-      };
-      setSentinelState("ALERT");
-    }
 
-    setReport(finalReport);
-    setScanning(false);
+      setReport(finalReport);
+    } catch (err: any) {
+      clearInterval(stageInterval);
+      setScanError(err.message || "Security analysis failed. Please verify credentials and connectivity.");
+      setSentinelState("IDLE");
+    } finally {
+      setScanning(false);
+    }
   };
 
   const sampleTargets = {
@@ -660,6 +473,23 @@ export const AnalyzePage: React.FC = () => {
           currentStageIndex={currentStage}
           targetName={inputValue || fileName}
         />
+      )}
+
+      {/* Scan Error Presentation */}
+      {scanError && !scanning && (
+        <Card variant="alert" className="p-5 border-red-800/80 bg-red-950/30 shadow-panel">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-xerox-red flex-shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <h4 className="text-sm font-bold text-white font-mono uppercase tracking-wide">
+                Security Analysis Failed
+              </h4>
+              <p className="text-xs text-red-300 font-sans leading-relaxed">
+                {scanError}
+              </p>
+            </div>
+          </div>
+        </Card>
       )}
 
       {/* Result Presentation */}

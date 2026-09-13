@@ -39,6 +39,20 @@ def set_redis_client(client: Optional[aioredis.Redis]) -> None:
     _redis_client = client
 
 
+async def check_redis_health() -> dict[str, str]:
+    """Probes Redis connection health using PING."""
+    client = await get_redis()
+    if client is None:
+        return {"status": "bypassed", "details": "Redis unavailable or unconfigured; caching bypassed"}
+    try:
+        pong = await client.ping()
+        if pong:
+            return {"status": "connected", "details": "Redis responding normally"}
+        return {"status": "degraded", "details": f"Unexpected ping response: {pong}"}
+    except Exception as exc:
+        return {"status": "unreachable", "details": str(exc)}
+
+
 class ThreatIntelCache:
     """Redis-backed cache service for threat intelligence lookups."""
 

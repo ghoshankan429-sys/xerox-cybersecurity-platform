@@ -19,7 +19,6 @@ import {
 import { useAuth } from "@/features/auth/AuthContext";
 import { getStats, getHistory } from "@/services/api";
 import { StatsSummary, ScanHistoryItem } from "@/types";
-import { MOCK_DASHBOARD_STATS, MOCK_RECENT_SCANS } from "@/data/mockScans";
 import {
   Card,
   CardTitle,
@@ -31,28 +30,36 @@ import {
   Input,
 } from "@/components/ui";
 
+const DEFAULT_STATS: StatsSummary = {
+  total_scans: 0,
+  threats_blocked: 0,
+  suspicious_flagged: 0,
+  benign_verified: 0,
+  scans_by_type: { URL: 0, MESSAGE: 0, SCREENSHOT: 0, FILE: 0 },
+};
+
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [stats, setStats] = useState<StatsSummary>(MOCK_DASHBOARD_STATS);
-  const [recentScans, setRecentScans] = useState<ScanHistoryItem[]>(MOCK_RECENT_SCANS);
+  const [stats, setStats] = useState<StatsSummary>(DEFAULT_STATS);
+  const [recentScans, setRecentScans] = useState<ScanHistoryItem[]>([]);
   const [quickUrl, setQuickUrl] = useState("");
 
   useEffect(() => {
     async function loadData() {
       try {
         const [statsData, historyData] = await Promise.all([
-          getStats().catch(() => MOCK_DASHBOARD_STATS),
-          getHistory(5).catch(() => MOCK_RECENT_SCANS),
+          getStats().catch(() => null),
+          getHistory(5).catch(() => null),
         ]);
-        if (statsData && statsData.total_scans > 0) {
+        if (statsData) {
           setStats(statsData);
         }
-        if (historyData && historyData.length > 0) {
+        if (historyData) {
           setRecentScans(historyData);
         }
       } catch {
-        // Fallback to mock data
+        // preserve current state
       }
     }
     loadData();
@@ -292,42 +299,56 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         {/* Scans List */}
-        <div className="divide-y divide-xerox-border-subtle">
-          {recentScans.map((scan) => (
-            <div
-              key={scan.scan_id}
-              className="py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-xerox-surface-elevated/40 p-3 rounded-xl transition-colors"
-            >
-              <div className="space-y-1.5 flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="outline" size="sm">
-                    {scan.target_type}
-                  </Badge>
-                  <RiskBadge level={scan.risk_level} score={scan.risk_score} size="sm" />
-                  <span className="text-[11px] font-mono text-slate-500">
-                    {new Date(scan.analyzed_at).toLocaleString()}
-                  </span>
-                </div>
-                <div className="font-mono text-xs font-bold text-white truncate max-w-xl">
-                  {scan.defanged_target}
-                </div>
-                <p className="text-xs text-slate-400 font-sans line-clamp-1">
-                  {scan.executive_summary}
-                </p>
-              </div>
-
-              <Link to={`/reports?id=${scan.scan_id}`}>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  rightIcon={<ExternalLink className="w-3.5 h-3.5" />}
-                >
-                  DOSSIER
-                </Button>
-              </Link>
+        {recentScans.length === 0 ? (
+          <div className="py-10 text-center space-y-3">
+            <div className="w-12 h-12 rounded-full bg-slate-800/50 border border-slate-700 flex items-center justify-center mx-auto text-slate-500">
+              <Activity className="w-6 h-6 text-slate-500" />
             </div>
-          ))}
-        </div>
+            <p className="font-mono text-xs text-slate-400">
+              No recent security investigations recorded.
+            </p>
+            <p className="text-[11px] text-slate-500 font-sans max-w-sm mx-auto">
+              Initiate an inspection above to begin building your forensic audit dossier.
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-xerox-border-subtle">
+            {recentScans.map((scan) => (
+              <div
+                key={scan.scan_id}
+                className="py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-xerox-surface-elevated/40 p-3 rounded-xl transition-colors"
+              >
+                <div className="space-y-1.5 flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline" size="sm">
+                      {scan.target_type}
+                    </Badge>
+                    <RiskBadge level={scan.risk_level} score={scan.risk_score} size="sm" />
+                    <span className="text-[11px] font-mono text-slate-500">
+                      {new Date(scan.analyzed_at).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="font-mono text-xs font-bold text-white truncate max-w-xl">
+                    {scan.defanged_target}
+                  </div>
+                  <p className="text-xs text-slate-400 font-sans line-clamp-1">
+                    {scan.executive_summary}
+                  </p>
+                </div>
+
+                <Link to={`/reports?id=${scan.scan_id}`}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    rightIcon={<ExternalLink className="w-3.5 h-3.5" />}
+                  >
+                    DOSSIER
+                  </Button>
+                </Link>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

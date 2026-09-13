@@ -4,11 +4,6 @@ import { ArrowLeft } from "lucide-react";
 import { getReport } from "@/services/api";
 import { ThreatReport } from "@/types";
 import { AnalysisResult } from "@/components/threat/AnalysisResult";
-import {
-  SAMPLE_PHISHING_REPORT,
-  SAMPLE_SMISHING_REPORT,
-  SAMPLE_BENIGN_REPORT,
-} from "@/data/mockScans";
 import { Button, LoadingState, ErrorState } from "@/components/ui";
 
 export const ReportsPage: React.FC = () => {
@@ -20,40 +15,20 @@ export const ReportsPage: React.FC = () => {
 
   useEffect(() => {
     if (!scanId) {
-      // Default to sample phishing report if directly visiting /reports
-      setReport(SAMPLE_PHISHING_REPORT);
+      setError("No scan identifier provided. Please select an investigation from the archive or run a new scan.");
       return;
     }
 
     setLoading(true);
     setError(null);
 
-    // Try mock matches first for realistic demo experience
-    if (scanId === SAMPLE_PHISHING_REPORT.scan_id) {
-      setReport(SAMPLE_PHISHING_REPORT);
-      setLoading(false);
-      return;
-    } else if (scanId === SAMPLE_SMISHING_REPORT.scan_id) {
-      setReport(SAMPLE_SMISHING_REPORT);
-      setLoading(false);
-      return;
-    } else if (scanId === SAMPLE_BENIGN_REPORT.scan_id) {
-      setReport(SAMPLE_BENIGN_REPORT);
-      setLoading(false);
-      return;
-    }
-
-    // Attempt backend fetch if API is connected
     getReport(scanId)
       .then((data) => {
         setReport(data);
       })
-      .catch(() => {
-        // Fallback to sample phishing report with the requested scan ID
-        setReport({
-          ...SAMPLE_PHISHING_REPORT,
-          scan_id: scanId,
-        });
+      .catch((err) => {
+        setError(err.message || "Dossier could not be located in the cryptographic archive.");
+        setReport(null);
       })
       .finally(() => setLoading(false));
   }, [scanId]);

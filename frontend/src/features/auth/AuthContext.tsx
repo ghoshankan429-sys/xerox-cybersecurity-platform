@@ -25,9 +25,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshUser = async () => {
     try {
+      const token = typeof window !== "undefined" ? sessionStorage.getItem("xerox_session_token") : null;
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const res = await fetch(`${API_BASE}/auth/me`, {
         method: "GET",
-        credentials: "include", // strictly send and receive HttpOnly cookies
+        credentials: "include", // send and receive HttpOnly cookies
+        headers,
       });
       if (res.ok) {
         const data = await res.json();
@@ -60,6 +67,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const userData = await res.json();
+    if (userData.session_token) {
+      sessionStorage.setItem("xerox_session_token", userData.session_token);
+    }
     setUser(userData);
   };
 
@@ -81,12 +91,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    const token = typeof window !== "undefined" ? sessionStorage.getItem("xerox_session_token") : null;
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
     try {
       await fetch(`${API_BASE}/auth/logout`, {
         method: "POST",
         credentials: "include",
+        headers,
       });
     } finally {
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("xerox_session_token");
+      }
       setUser(null);
     }
   };

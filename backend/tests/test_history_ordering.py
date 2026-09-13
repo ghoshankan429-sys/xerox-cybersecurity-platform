@@ -1,11 +1,8 @@
 ﻿import uuid
 import pytest
 from httpx import AsyncClient
-from datetime import datetime, timezone
 from app.core.datetime_utils import get_monotonic_utc_now
 from app.core.config import settings
-from app.schemas.threat import ThreatReport, TargetType, RiskLevel
-from app.api.v1.scans import SCAN_DATABASE, SCAN_ORDER, get_scan_history
 
 
 def test_monotonic_timestamp_strictly_increasing():
@@ -16,56 +13,32 @@ def test_monotonic_timestamp_strictly_increasing():
 
 
 @pytest.mark.asyncio
-async def test_scans_in_memory_history_tie_breaking():
-    """Verify in-memory scan history uses insertion order when analyzed_at matches."""
-    same_time = "2026-09-12T12:00:00Z"
-    id_first = f"test-tie-{uuid.uuid4().hex[:6]}-1"
-    id_second = f"test-tie-{uuid.uuid4().hex[:6]}-2"
+async def test_scans_alias_history_ordering(async_client: AsyncClient):
+    """Verify /scans/history alias returns database scans in strictly newest-first order."""
+    email = f"alias_{uuid.uuid4().hex[:8]}@xerox.sec"
+    pwd = "StrongPassword123!"
 
-    global SCAN_DATABASE, SCAN_ORDER
-    # Insert first
-    order1 = 99990
-    SCAN_ORDER[id_first] = order1
-    SCAN_DATABASE[id_first] = ThreatReport(
-        scan_id=id_first,
-        target_type=TargetType.URL,
-        raw_target="https://tie-test-1.com",
-        defanged_target="hxxps://tie-test-1[.]com",
-        risk_score=10,
-        risk_level=RiskLevel.BENIGN,
-        confidence_score=0.9,
-        executive_summary="Tie test 1",
-        layman_verdict="Tie test 1 verdict",
-        evidence_items=[],
-        recommended_actions=[],
-        technical_metadata={},
-        analyzed_at=same_time,
-    )
+    reg = await async_client.post(f"{settings.API_V1_STR}/auth/register", json={"email": email, "password": pwd})
+    assert reg.status_code == 201
+    login = await async_client.post(f"{settings.API_V1_STR}/auth/login", json={"email": email, "password": pwd})
+    assert login.status_code == 200
 
-    # Insert second (later order, same timestamp)
-    order2 = 99991
-    SCAN_ORDER[id_second] = order2
-    SCAN_DATABASE[id_second] = ThreatReport(
-        scan_id=id_second,
-        target_type=TargetType.URL,
-        raw_target="https://tie-test-2.com",
-        defanged_target="hxxps://tie-test-2[.]com",
-        risk_score=20,
-        risk_level=RiskLevel.BENIGN,
-        confidence_score=0.9,
-        executive_summary="Tie test 2",
-        layman_verdict="Tie test 2 verdict",
-        evidence_items=[],
-        recommended_actions=[],
-        technical_metadata={},
-        analyzed_at=same_time,
-    )
+    # Submit 2 scans via /scans/url
+    res1 = await async_client.post(f"{settings.API_V1_STR}/scans/url", json={"url": "https://alias-test-one.com"})
+    assert res1.status_code == 200
+    scan_id1 = res1.json()["scan_id"]
 
-    history = await get_scan_history(limit=50)
-    history_ids = [item.scan_id for item in history]
-    assert id_second in history_ids
-    assert id_first in history_ids
-    assert history_ids.index(id_second) < history_ids.index(id_first)
+    res2 = await async_client.post(f"{settings.API_V1_STR}/scans/url", json={"url": "https://alias-test-two.com"})
+    assert res2.status_code == 200
+    scan_id2 = res2.json()["scan_id"]
+
+    # History via /scans/history must return scan_id2 first
+    hist_resp = await async_client.get(f"{settings.API_V1_STR}/scans/history?limit=10")
+    assert hist_resp.status_code == 200
+    history = hist_resp.json()
+    assert len(history) >= 2
+    assert history[0]["scan_id"] == scan_id2
+    assert history[1]["scan_id"] == scan_id1
 
 
 @pytest.mark.asyncio

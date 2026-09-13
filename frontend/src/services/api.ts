@@ -6,12 +6,24 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api/v1";
 
+function getAuthHeaders(extraHeaders: Record<string, string> = {}): Record<string, string> {
+  const headers: Record<string, string> = { ...extraHeaders };
+  const token = typeof window !== "undefined" ? sessionStorage.getItem("xerox_session_token") : null;
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 export async function checkBackendHealth(): Promise<{
   status: string;
   service: string;
   version: string;
+  database?: string;
+  redis?: Record<string, string>;
 }> {
   const res = await fetch(`${API_BASE}/health`, {
+    headers: getAuthHeaders(),
     credentials: "include",
   });
   if (!res.ok) {
@@ -23,7 +35,7 @@ export async function checkBackendHealth(): Promise<{
 export async function scanUrl(url: string): Promise<ThreatReport> {
   const res = await fetch(`${API_BASE}/analyze/url`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
     credentials: "include",
     body: JSON.stringify({ url, deep_scan: true }),
   });
@@ -42,7 +54,7 @@ export async function scanMessage(
 ): Promise<ThreatReport> {
   const res = await fetch(`${API_BASE}/analyze/message`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
     credentials: "include",
     body: JSON.stringify({
       content,
@@ -64,6 +76,7 @@ export async function scanScreenshot(file: File): Promise<ThreatReport> {
 
   const res = await fetch(`${API_BASE}/analyze/screenshot`, {
     method: "POST",
+    headers: getAuthHeaders(),
     credentials: "include",
     body: formData,
   });
@@ -76,6 +89,7 @@ export async function scanScreenshot(file: File): Promise<ThreatReport> {
 
 export async function getHistory(limit: number = 50): Promise<ScanHistoryItem[]> {
   const res = await fetch(`${API_BASE}/analyze/history?limit=${limit}`, {
+    headers: getAuthHeaders(),
     credentials: "include",
   });
   if (!res.ok) {
@@ -86,6 +100,7 @@ export async function getHistory(limit: number = 50): Promise<ScanHistoryItem[]>
 
 export async function getReport(scanId: string): Promise<ThreatReport> {
   const res = await fetch(`${API_BASE}/analyze/${scanId}`, {
+    headers: getAuthHeaders(),
     credentials: "include",
   });
   if (!res.ok) {
@@ -96,10 +111,39 @@ export async function getReport(scanId: string): Promise<ThreatReport> {
 
 export async function getStats(): Promise<StatsSummary> {
   const res = await fetch(`${API_BASE}/analyze/stats/summary`, {
+    headers: getAuthHeaders(),
     credentials: "include",
   });
   if (!res.ok) {
     throw new Error("Failed to load telemetry stats");
+  }
+  return res.json();
+}
+
+export interface FeedbackSubmission {
+  scan_id: string;
+  is_accurate: boolean;
+  user_notes?: string;
+  suggested_label?: string;
+}
+
+export async function submitFeedback(feedback: FeedbackSubmission): Promise<{
+  id: string;
+  scan_id: string;
+  is_accurate: boolean;
+  user_notes?: string;
+  suggested_label?: string;
+  submitted_at: string;
+}> {
+  const res = await fetch(`${API_BASE}/feedback`, {
+    method: "POST",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
+    credentials: "include",
+    body: JSON.stringify(feedback),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Feedback submission failed" }));
+    throw new Error(err.detail || "Feedback submission failed");
   }
   return res.json();
 }

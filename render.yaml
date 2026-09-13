@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: xerox-backend
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: xerox-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: xerox-redis
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: '["https://ghoshankan429-sys.github.io","http://localhost:3000"]'
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAMESITE
+        value: "none"
+
+  - type: redis
+    name: xerox-redis
+    plan: free
+    ipAllowList: []
+
+databases:
+  - name: xerox-db
+    databaseName: xerox
+    user: xerox
+    plan: free

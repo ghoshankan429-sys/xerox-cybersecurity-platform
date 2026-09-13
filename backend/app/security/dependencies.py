@@ -17,7 +17,19 @@ async def get_current_user(
     FastAPI dependency validating the HttpOnly session cookie against database records.
     Returns the authenticated User or raises HTTP 401.
     """
+    # 1. Check HttpOnly session cookie
     session_token = request.cookies.get(settings.SESSION_COOKIE_NAME)
+
+    # 2. Check Authorization Bearer header (cross-origin / third-party cookie fallback)
+    if not session_token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            session_token = auth_header[7:].strip()
+
+    # 3. Check X-Session-Token custom header
+    if not session_token:
+        session_token = request.headers.get("X-Session-Token")
+
     if not session_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

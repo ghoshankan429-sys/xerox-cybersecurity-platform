@@ -105,7 +105,7 @@ async def login_user(
     await db.commit()
 
     # Set secure HttpOnly session cookie
-    is_secure = settings.COOKIE_SECURE or (settings.ENVIRONMENT == "production")
+    is_secure = settings.COOKIE_SECURE or (settings.ENVIRONMENT == "production") or (settings.COOKIE_SAMESITE.lower() == "none")
     response.set_cookie(
         key=settings.SESSION_COOKIE_NAME,
         value=session_token,
@@ -117,7 +117,12 @@ async def login_user(
         path="/",
     )
 
-    return user
+    return UserResponse(
+        id=user.id,
+        email=user.email,
+        created_at=user.created_at,
+        session_token=session_token,
+    )
 
 
 @router.post(
@@ -131,6 +136,13 @@ async def logout_user(
     db: AsyncSession = Depends(get_db),
 ):
     session_token = request.cookies.get(settings.SESSION_COOKIE_NAME)
+    if not session_token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            session_token = auth_header[7:].strip()
+    if not session_token:
+        session_token = request.headers.get("X-Session-Token")
+
     if session_token:
         token_hash = hash_session_token(session_token)
         await db.execute(
@@ -139,7 +151,7 @@ async def logout_user(
         await db.commit()
 
     # Invalidate cookie on browser
-    is_secure = settings.COOKIE_SECURE or (settings.ENVIRONMENT == "production")
+    is_secure = settings.COOKIE_SECURE or (settings.ENVIRONMENT == "production") or (settings.COOKIE_SAMESITE.lower() == "none")
     response.delete_cookie(
         key=settings.SESSION_COOKIE_NAME,
         httponly=True,

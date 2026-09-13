@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { History, ExternalLink, RefreshCw, Search } from "lucide-react";
 import { getHistory } from "@/services/api";
 import { ScanHistoryItem } from "@/types";
-import { MOCK_RECENT_SCANS } from "@/data/mockScans";
 import {
   Button,
   Badge,
@@ -15,7 +14,7 @@ import {
 type FilterType = "ALL" | "URL" | "MESSAGE" | "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK";
 
 export const HistoryPage: React.FC = () => {
-  const [history, setHistory] = useState<ScanHistoryItem[]>(MOCK_RECENT_SCANS);
+  const [history, setHistory] = useState<ScanHistoryItem[]>([]);
   const [activeFilter, setActiveFilter] = useState<FilterType>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -24,13 +23,9 @@ export const HistoryPage: React.FC = () => {
     setLoading(true);
     try {
       const data = await getHistory(50);
-      if (data && data.length > 0) {
-        setHistory(data);
-      } else {
-        setHistory(MOCK_RECENT_SCANS);
-      }
+      setHistory(data || []);
     } catch {
-      setHistory(MOCK_RECENT_SCANS);
+      setHistory([]);
     } finally {
       setLoading(false);
     }
