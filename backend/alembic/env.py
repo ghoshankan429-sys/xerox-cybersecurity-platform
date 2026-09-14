@@ -20,10 +20,12 @@ target_metadata = Base.metadata
 
 # Respect an explicitly supplied Alembic SQLAlchemy URL (for example, the
 # isolated SQLite URL used by migration lifecycle tests). Only fall back to
-# the application settings when Alembic did not receive a usable URL.
-configured_url = config.get_main_option("sqlalchemy.url")
-if not configured_url and settings.DATABASE_URL:
+# the application settings when Alembic received the default placeholder or no URL.
+current_url = config.get_main_option("sqlalchemy.url")
+ini_default = "postgresql+asyncpg://postgres:postgres@localhost:5432/xerox"
+if (not current_url or current_url == ini_default) and settings.DATABASE_URL:
     config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+
 
 
 def run_migrations_offline() -> None:

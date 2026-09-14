@@ -6,8 +6,13 @@ from app.database.session import engine
 
 
 @pytest.fixture(autouse=True)
-async def ensure_database_tables():
-    """Ensure all database schema tables exist before executing each test."""
+async def ensure_database_tables(request: pytest.FixtureRequest):
+    """Ensure all database schema tables exist before executing each test.
+    Skips schema creation for migration lifecycle tests that test clean Alembic bootstrap."""
+    if request.node.name == "test_alembic_migration_lifecycle":
+        yield
+        return
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
