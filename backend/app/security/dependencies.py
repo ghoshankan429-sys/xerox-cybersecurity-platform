@@ -30,10 +30,16 @@ async def get_current_user(
     if not session_token:
         session_token = request.headers.get("X-Session-Token")
 
+    NO_CACHE_AUTH_HEADERS = {
+        "Cache-Control": "no-cache, no-store, must-revalidate, private",
+        "Pragma": "no-cache",
+    }
+
     if not session_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
+            headers=NO_CACHE_AUTH_HEADERS,
         )
 
     token_hash = hash_session_token(session_token)
@@ -54,6 +60,7 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired session",
+            headers=NO_CACHE_AUTH_HEADERS,
         )
 
     # Query user associated with session
@@ -65,6 +72,7 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User account associated with session does not exist",
+            headers=NO_CACHE_AUTH_HEADERS,
         )
 
     return user

@@ -16,13 +16,24 @@ export const LoginPage: React.FC = () => {
 
   const from = (location.state as any)?.from?.pathname || "/dashboard";
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
 
+    const form = e.currentTarget;
+    const emailInput = form.elements.namedItem("email") as HTMLInputElement | null;
+    const passwordInput = form.elements.namedItem("password") as HTMLInputElement | null;
+    const finalEmail = (email || emailInput?.value || "").trim();
+    const finalPassword = password || passwordInput?.value || "";
+
+    if (!finalEmail || !finalPassword) {
+      setError("Please provide both email and password.");
+      return;
+    }
+
+    setLoading(true);
     try {
-      await login(email.trim(), password);
+      await login(finalEmail, finalPassword);
       navigate(from, { replace: true });
     } catch (err: any) {
       setError(err.message || "Invalid analyst credentials. Please verify and retry.");
@@ -61,6 +72,7 @@ export const LoginPage: React.FC = () => {
           <Input
             label="OPERATIONAL EMAIL"
             type="email"
+            name="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -72,6 +84,7 @@ export const LoginPage: React.FC = () => {
           <Input
             label="SECURITY KEY / PASSWORD"
             type="password"
+            name="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required

@@ -24,6 +24,33 @@ def _get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+def _resolve_cookie_security(request: Request) -> tuple[bool, str]:
+    """
+    Dynamically determines (secure, samesite) settings based on HTTPS context.
+    When served over HTTPS (direct or behind reverse proxies like Railway),
+    we set secure=True and samesite="none" to support cross-site requests (e.g. from GitHub Pages)
+    and WebKit/iOS Safari ITP.
+    For local development over plain HTTP, we retain secure=False and samesite="lax".
+    """
+    forwarded_proto = request.headers.get("x-forwarded-proto", "").lower()
+    is_https = (
+        settings.COOKIE_SECURE
+        or (settings.ENVIRONMENT == "production")
+        or (settings.COOKIE_SAMESITE.lower() == "none")
+        or (request.url.scheme == "https")
+        or (forwarded_proto == "https")
+    )
+    if is_https:
+        return True, "none"
+    return False, settings.COOKIE_SAMESITE
+
+
+def _set_no_cache_headers(response: Response) -> None:
+    """Explicitly prevent browser/WebKit caching of auth endpoints."""
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, private"
+    response.headers["Pragma"] = "no-cache"
+
+
 @router.post(
     "/register",
     response_model=UserResponse,
@@ -32,8 +59,10 @@ def _get_client_ip(request: Request) -> str:
 )
 async def register_user(
     req: RegisterRequest,
+    response: Response,
     db: AsyncSession = Depends(get_db),
 ):
+    _set_no_cache_headers(response)
     # Check for duplicate email
     stmt = select(User).where(User.email == req.email)
     existing = (await db.execute(stmt)).scalar_one_or_none()
@@ -68,6 +97,7 @@ async def login_user(
     response: Response,
     db: AsyncSession = Depends(get_db),
 ):
+    _set_no_cache_headers(response)
     client_ip = _get_client_ip(request)
     rate_limit_key = f"{client_ip}:{req.email}"
 
@@ -104,15 +134,15 @@ async def login_user(
     db.add(new_session)
     await db.commit()
 
-    # Set secure HttpOnly session cookie
-    is_secure = settings.COOKIE_SECURE or (settings.ENVIRONMENT == "production") or (settings.COOKIE_SAMESITE.lower() == "none")
+    # Set secure HttpOnly session cookie dynamically based on HTTPS context
+    is_secure, samesite = _resolve_cookie_security(request)
     response.set_cookie(
         key=settings.SESSION_COOKIE_NAME,
         value=session_token,
         max_age=settings.SESSION_EXPIRE_SECONDS,
         httponly=settings.COOKIE_HTTPONLY,
         secure=is_secure,
-        samesite=settings.COOKIE_SAMESITE,
+        samesite=samesite,
         domain=settings.COOKIE_DOMAIN,
         path="/",
     )
@@ -135,6 +165,7 @@ async def logout_user(
     response: Response,
     db: AsyncSession = Depends(get_db),
 ):
+    _set_no_cache_headers(response)
     session_token = request.cookies.get(settings.SESSION_COOKIE_NAME)
     if not session_token:
         auth_header = request.headers.get("Authorization")
@@ -150,13 +181,13 @@ async def logout_user(
         )
         await db.commit()
 
-    # Invalidate cookie on browser
-    is_secure = settings.COOKIE_SECURE or (settings.ENVIRONMENT == "production") or (settings.COOKIE_SAMESITE.lower() == "none")
+    # Invalidate cookie on browser matching same secure/samesite attributes
+    is_secure, samesite = _resolve_cookie_security(request)
     response.delete_cookie(
         key=settings.SESSION_COOKIE_NAME,
         httponly=settings.COOKIE_HTTPONLY,
         secure=is_secure,
-        samesite=settings.COOKIE_SAMESITE,
+        samesite=samesite,
         domain=settings.COOKIE_DOMAIN,
         path="/",
     )
@@ -170,6 +201,8 @@ async def logout_user(
     summary="Get current authenticated user profile",
 )
 async def get_current_user_profile(
+    response: Response,
     current_user: User = Depends(get_current_user),
 ):
+    _set_no_cache_headers(response)
     return current_user

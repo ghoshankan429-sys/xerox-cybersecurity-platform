@@ -3,12 +3,13 @@ import {
   ScanHistoryItem,
   StatsSummary,
 } from "@/types";
+import { getStoredToken } from "@/features/auth/tokenStorage";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api/v1";
 
 function getAuthHeaders(extraHeaders: Record<string, string> = {}): Record<string, string> {
   const headers: Record<string, string> = { ...extraHeaders };
-  const token = typeof window !== "undefined" ? sessionStorage.getItem("xerox_session_token") : null;
+  const token = getStoredToken();
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }

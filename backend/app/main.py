@@ -70,10 +70,11 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     )
     origin = request.headers.get("origin")
     if origin and (origin in settings.CORS_ORIGINS or "*" in settings.CORS_ORIGINS):
+        req_headers = request.headers.get("access-control-request-headers")
         response.headers["Access-Control-Allow-Origin"] = origin
         response.headers["Access-Control-Allow-Credentials"] = "true"
-        response.headers["Access-Control-Allow-Methods"] = "*"
-        response.headers["Access-Control-Allow-Headers"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        response.headers["Access-Control-Allow-Headers"] = req_headers if req_headers else "Content-Type, Authorization, X-Session-Token"
     return response
 
 

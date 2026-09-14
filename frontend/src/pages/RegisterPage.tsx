@@ -14,23 +14,37 @@ export const RegisterPage: React.FC = () => {
   const { register } = useAuth();
   const navigate = useNavigate();
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
 
-    if (password !== confirmPassword) {
+    const form = e.currentTarget;
+    const emailInput = form.elements.namedItem("email") as HTMLInputElement | null;
+    const passwordInput = form.elements.namedItem("password") as HTMLInputElement | null;
+    const confirmPasswordInput = form.elements.namedItem("confirmPassword") as HTMLInputElement | null;
+
+    const finalEmail = (email || emailInput?.value || "").trim();
+    const finalPassword = password || passwordInput?.value || "";
+    const finalConfirmPassword = confirmPassword || confirmPasswordInput?.value || "";
+
+    if (!finalEmail || !finalPassword) {
+      setError("Please provide both email and password.");
+      return;
+    }
+
+    if (finalPassword !== finalConfirmPassword) {
       setError("Passwords do not match. Please verify.");
       return;
     }
 
-    if (password.length < 8) {
+    if (finalPassword.length < 8) {
       setError("Password must be at least 8 characters long.");
       return;
     }
 
     setLoading(true);
     try {
-      await register(email.trim(), password);
+      await register(finalEmail, finalPassword);
       navigate("/dashboard", { replace: true });
     } catch (err: any) {
       setError(err.message || "Registration failed. Please try again.");
@@ -68,6 +82,7 @@ export const RegisterPage: React.FC = () => {
           <Input
             label="OPERATIONAL EMAIL"
             type="email"
+            name="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -79,6 +94,7 @@ export const RegisterPage: React.FC = () => {
           <Input
             label="SECURITY KEY / PASSWORD"
             type="password"
+            name="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -91,6 +107,7 @@ export const RegisterPage: React.FC = () => {
           <Input
             label="CONFIRM PASSWORD"
             type="password"
+            name="confirmPassword"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required

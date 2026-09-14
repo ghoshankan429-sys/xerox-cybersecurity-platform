@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import { clearStoredToken, getStoredToken, setStoredToken } from "./tokenStorage";
 
 export interface User {
   id: string;
@@ -22,10 +23,12 @@ const API_BASE = import.meta.env.VITE_API_URL || "/api/v1";
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const reqSeq = useRef(0);
 
   const refreshUser = async () => {
+    const seq = ++reqSeq.current;
     try {
-      const token = typeof window !== "undefined" ? sessionStorage.getItem("xerox_session_token") : null;
+      const token = getStoredToken();
       const headers: Record<string, string> = {};
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
@@ -35,17 +38,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         method: "GET",
         credentials: "include", // send and receive HttpOnly cookies
         headers,
+        cache: "no-store", // Prevents WebKit/Safari from serving cached 401
       });
+
+      if (seq !== reqSeq.current) {
+        // Discard stale response if another auth event started
+        return;
+      }
+
       if (res.ok) {
         const data = await res.json();
         setUser(data);
       } else {
+        clearStoredToken();
         setUser(null);
       }
     } catch {
-      setUser(null);
+      if (seq === reqSeq.current) {
+        setUser(null);
+      }
     } finally {
-      setLoading(false);
+      if (seq === reqSeq.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -54,10 +69,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string) => {
+    reqSeq.current++; // Invalidate any pending initial refreshUser
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
+      cache: "no-store",
       body: JSON.stringify({ email, password }),
     });
 
@@ -68,16 +85,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const userData = await res.json();
     if (userData.session_token) {
-      sessionStorage.setItem("xerox_session_token", userData.session_token);
+      setStoredToken(userData.session_token);
     }
     setUser(userData);
   };
 
   const register = async (email: string, password: string) => {
+    reqSeq.current++;
     const res = await fetch(`${API_BASE}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
+      cache: "no-store",
       body: JSON.stringify({ email, password }),
     });
 
@@ -91,7 +110,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    const token = typeof window !== "undefined" ? sessionStorage.getItem("xerox_session_token") : null;
+    reqSeq.current++;
+    const token = getStoredToken();
     const headers: Record<string, string> = {};
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
@@ -102,11 +122,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         method: "POST",
         credentials: "include",
         headers,
+        cache: "no-store",
       });
     } finally {
-      if (typeof window !== "undefined") {
-        sessionStorage.removeItem("xerox_session_token");
-      }
+      clearStoredToken();
       setUser(null);
     }
   };
