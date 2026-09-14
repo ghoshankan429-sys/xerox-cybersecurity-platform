@@ -18,8 +18,11 @@ if config.config_file_name is not None:
 # Set model MetaData for autogenerate and migrations
 target_metadata = Base.metadata
 
-# Ensure DATABASE_URL is dynamically set from settings / environment variables
-if settings.DATABASE_URL:
+# Respect an explicitly supplied Alembic SQLAlchemy URL (for example, the
+# isolated SQLite URL used by migration lifecycle tests). Only fall back to
+# the application settings when Alembic did not receive a usable URL.
+configured_url = config.get_main_option("sqlalchemy.url")
+if not configured_url and settings.DATABASE_URL:
     config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 
